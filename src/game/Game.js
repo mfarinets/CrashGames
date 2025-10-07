@@ -10,6 +10,7 @@ import { LEVELS } from '../data/levels.js';
 import { AUTOPILOT_PRESETS } from '../data/autopilotPresets.js';
 
 const RADIANS_PER_DEGREE = Math.PI / 180;
+const MULTIPLIER_HIGHLIGHT_DURATION = 0.35;
 
 export class Game {
   constructor(canvas, callbacks = {}) {
@@ -287,8 +288,12 @@ export class Game {
     this.bird.velocity = Math.max(this.bird.velocity, 120);
   }
 
-  updatePipes() {
+  updatePipes(dt) {
     for (const pipe of this.pipes) {
+      pipe.highlightTimer = Math.max(
+        0,
+        (pipe.highlightTimer || 0) - (dt ?? 0)
+      );
       pipe.x = pipe.spawnX - this.scrollOffset;
       const birdLeft = WORLD.birdX - BIRD.width / 2;
       const birdRight = WORLD.birdX + BIRD.width / 2;
@@ -297,6 +302,7 @@ export class Game {
 
       if (!pipe.passed && pipeRight < birdLeft) {
         pipe.passed = true;
+        pipe.highlightTimer = MULTIPLIER_HIGHLIGHT_DURATION;
         if (this.trainerMode || pipe.id < this.crashIndex) {
           this.currentMultiplier = pipe.multiplier;
           this.callbacks?.onMultiplier?.(this.currentMultiplier);
@@ -434,6 +440,7 @@ function buildRoundPipes(level) {
     ...pipe,
     x: pipe.spawnX,
     passed: false,
+    highlightTimer: 0,
   }));
 }
 
@@ -483,22 +490,29 @@ function drawPipes(ctx, pipes, level) {
   ctx.lineWidth = 2;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.font = '18px "Inter", sans-serif';
+  ctx.font = '600 18px "Inter", sans-serif';
 
-  const pipeTopColor =
+  const pipeTopColorBase =
     level.groundTheme === 'lava' ? '#f97316' : COLORS.pipeTop;
-  const pipeBottomColor =
+  const pipeBottomColorBase =
     level.groundTheme === 'lava' ? '#ea580c' : COLORS.pipeBottom;
+  const pipeTopPassed = level.groundTheme === 'lava' ? '#fb923c' : '#4ade80';
+  const pipeBottomPassed = level.groundTheme === 'lava' ? '#f97316' : '#22c55e';
 
   for (const pipe of pipes) {
     const gapTop = pipe.gapCenter - pipe.gapHeight / 2;
     const gapBottom = pipe.gapCenter + pipe.gapHeight / 2;
 
-    ctx.fillStyle = pipeTopColor;
+    const usedTopColor = pipe.passed ? pipeTopPassed : pipeTopColorBase;
+    const usedBottomColor = pipe.passed
+      ? pipeBottomPassed
+      : pipeBottomColorBase;
+
+    ctx.fillStyle = usedTopColor;
     drawRoundedRectPath(ctx, pipe.x, 0, PIPE.width, gapTop, 14);
     ctx.fill();
 
-    ctx.fillStyle = pipeBottomColor;
+    ctx.fillStyle = usedBottomColor;
     const bottomHeight = Math.max(
       0,
       VIRTUAL_HEIGHT - gapBottom - WORLD.groundHeight
@@ -508,12 +522,18 @@ function drawPipes(ctx, pipes, level) {
       ctx.fill();
     }
 
-    ctx.fillStyle = 'rgba(15,23,42,0.75)';
-    ctx.fillText(
-      `×${pipe.multiplier.toFixed(2)}`,
-      pipe.x + PIPE.width / 2,
-      Math.max(gapTop - 12, 28)
+    const labelY = Math.max(gapTop - 12, 28);
+    const highlightProgress = Math.max(
+      0,
+      Math.min(1, (pipe.highlightTimer || 0) / MULTIPLIER_HIGHLIGHT_DURATION)
     );
+    const scale = 1 + 0.28 * highlightProgress;
+    ctx.save();
+    ctx.translate(pipe.x + PIPE.width / 2, labelY);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = pipe.passed ? '#facc15' : 'rgba(15,23,42,0.78)';
+    ctx.fillText(`×${pipe.multiplier.toFixed(2)}`, 0, 0);
+    ctx.restore();
   }
 }
 

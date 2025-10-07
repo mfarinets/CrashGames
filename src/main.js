@@ -24,6 +24,8 @@ const metaLeftLabel = document.getElementById('meta-left-label');
 const metaLeftValue = document.getElementById('meta-left-value');
 const winOverlay = document.getElementById('win-overlay');
 const winAmount = document.getElementById('win-amount');
+const multiplierContainer = document.getElementById('multiplier-container');
+const currentMultiplierEl = document.getElementById('current-multiplier');
 
 const BET_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
 const BUTTON_STATES = {
@@ -43,6 +45,8 @@ let buttonState = BUTTON_STATES.READY;
 let activeBet = BET_STEPS[betIndex];
 let lastWinAmount = 0;
 let winResetTimer = null;
+let previousMultiplier = 1;
+let multiplierPulseTimer = null;
 
 const game = new Game(canvas, {
   onStatus: handleStatusUpdate,
@@ -60,6 +64,7 @@ function init() {
   selectedCrashIndex = Number(crashSelect.value);
   updateBalanceDisplay();
   updateBetDisplay();
+  updateMultiplierDisplay(1, false);
   updateUIForLevel(currentLevel);
   setPrimaryButton(BUTTON_STATES.READY);
   attachEventListeners();
@@ -229,6 +234,23 @@ function updatePayoutPreview(multiplier) {
   ctaSubtext.textContent = formatCurrency(payout);
 }
 
+function updateMultiplierDisplay(value, animate = true) {
+  currentMultiplierEl.textContent = `×${value.toFixed(2)}`;
+  if (!animate) {
+    multiplierContainer.classList.remove('pulse');
+    return;
+  }
+  multiplierContainer.classList.remove('pulse');
+  void multiplierContainer.offsetWidth;
+  multiplierContainer.classList.add('pulse');
+  if (multiplierPulseTimer) {
+    clearTimeout(multiplierPulseTimer);
+  }
+  multiplierPulseTimer = setTimeout(() => {
+    multiplierContainer.classList.remove('pulse');
+  }, 260);
+}
+
 function setPrimaryButton(state, opts = {}) {
   buttonState = state;
   primaryButton.classList.remove('ready', 'cashout', 'win');
@@ -238,8 +260,6 @@ function setPrimaryButton(state, opts = {}) {
       ctaLabel.textContent = 'Bet';
       ctaSubtext.textContent = formatCurrency(BET_STEPS[betIndex]);
       winOverlay.classList.add('hidden');
-      metaLeftLabel.textContent = 'Total bet:';
-      metaLeftValue.textContent = formatCurrency(BET_STEPS[betIndex]);
       disableBetSpinner(false);
       break;
     case BUTTON_STATES.RUNNING:
@@ -265,6 +285,9 @@ function setPrimaryButton(state, opts = {}) {
       disableBetSpinner(false);
       break;
   }
+  if (state !== BUTTON_STATES.WIN) {
+    updateBetDisplay();
+  }
 }
 
 function disableBetSpinner(disabled) {
@@ -281,10 +304,11 @@ function resetPostRoundUI() {
   winOverlay.classList.add('hidden');
   debugMenu.classList.add('hidden');
   setPrimaryButton(BUTTON_STATES.READY);
-  updateBetDisplay();
   roundActive = false;
   trainerToggle.disabled = false;
   crashSelect.disabled = false;
+  updateMultiplierDisplay(1, false);
+  previousMultiplier = 1;
 }
 
 function handleStatusUpdate(status) {
@@ -294,6 +318,9 @@ function handleStatusUpdate(status) {
 function handleMultiplierUpdate(multiplier) {
   const shown = multiplier < 1 ? 1 : multiplier;
   multiplierLabel.textContent = `×${shown.toFixed(2)}`;
+  const animate = shown > previousMultiplier + 0.001;
+  updateMultiplierDisplay(shown, animate);
+  previousMultiplier = shown;
   updatePayoutPreview(shown);
 }
 
@@ -316,6 +343,7 @@ function handleRoundEnd(result) {
   disableBetSpinner(false);
   trainerToggle.disabled = false;
   crashSelect.disabled = false;
+  previousMultiplier = 1;
 
   if (trainerToggle.checked) {
     resetPostRoundUI();
@@ -334,8 +362,6 @@ function handleRoundEnd(result) {
       resetPostRoundUI();
     }, 3000);
   } else {
-    metaLeftLabel.textContent = 'Total bet:';
-    metaLeftValue.textContent = formatCurrency(BET_STEPS[betIndex]);
     setPrimaryButton(BUTTON_STATES.READY);
   }
 
