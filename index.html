@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Crash Flight Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+      <div class="hud">
+        <div class="top-row">
+          <div class="mode-switch" id="mode-switch">
+            <button data-level="medium" class="mode-option active">Classic</button>
+            <button data-level="devil" class="mode-option">Devil</button>
+          </div>
+          <button id="more-button" class="chip">More games</button>
+        </div>
+
+        <div id="debug-menu" class="debug-menu hidden">
+          <div class="debug-content">
+            <div class="debug-header">
+              <h3>Developer Tools</h3>
+              <button id="close-debug" class="chip ghost">Close</button>
+            </div>
+            <div class="debug-grid">
+              <label class="debug-field">
+                <span>Crash Order</span>
+                <select id="crash-select"></select>
+              </label>
+              <label class="debug-field">
+                <span>Trainer Mode</span>
+                <input type="checkbox" id="trainer-toggle" />
+              </label>
+              <div class="debug-field">
+                <span>Status</span>
+                <strong id="status-label">Idle</strong>
+              </div>
+              <div class="debug-field">
+                <span>Multiplier</span>
+                <strong id="multiplier-label">×1.00</strong>
+              </div>
+            </div>
+            <button id="copy-script-button" class="ghost hidden">
+              Copy Trainer Script
+            </button>
+          </div>
+        </div>
+
+        <div class="center-overlay hidden" id="win-overlay">
+          <div class="win-pulse">
+            <span>You win</span>
+            <strong id="win-amount">$0.00</strong>
+          </div>
+        </div>
+
+        <div class="primary-action-area">
+          <div class="bet-spinner" id="bet-spinner">
+            <button class="spinner-btn" id="bet-minus">−</button>
+            <div class="bet-display">
+              <span class="label">Bet</span>
+              <strong id="bet-amount">$10.00</strong>
+            </div>
+            <button class="spinner-btn" id="bet-plus">+</button>
+          </div>
+          <button id="primary-button" class="cta ready">
+            <span class="cta-label">Bet</span>
+            <small id="cta-subtext">$10.00</small>
+          </button>
+        </div>
+
+        <footer class="bottom-bar">
+          <div class="meta">
+            <span id="meta-left-label">Total bet:</span>
+            <strong id="meta-left-value">$10.00</strong>
+          </div>
+          <div class="meta">
+            <span>Balance:</span>
+            <strong id="balance-display">$1,000.00</strong>
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
