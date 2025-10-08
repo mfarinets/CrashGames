@@ -480,7 +480,7 @@ export class KnivesGame {
     const portrait = height >= width;
     const minDim = Math.min(width, height);
     const wheelRadius = Math.max(80, minDim * (portrait ? 0.2 : 0.15));
-    const baseCenterY = portrait ? height * 0.43 : height * 0.5;
+    const baseCenterY = portrait ? height * 0.23 : height * 0.5;
     const centerY = Math.max(wheelRadius + 80, baseCenterY);
     const throwStartY = Math.min(
       height - 80,
