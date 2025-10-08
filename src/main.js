@@ -4,6 +4,7 @@ import { UI_THEME } from './game/constants.js';
 
 const canvas = document.getElementById('game-canvas');
 const balanceDisplay = document.getElementById('balance-display');
+const balanceMeta = balanceDisplay ? balanceDisplay.closest('.meta') : null;
 const crashSelect = document.getElementById('crash-select');
 const trainerToggle = document.getElementById('trainer-toggle');
 const statusLabel = document.getElementById('status-label');
@@ -150,9 +151,12 @@ function attachEventListeners() {
     toggleTrainerUI(enabled);
   });
 
-  moreButton.addEventListener('click', () => {
-    debugMenu.classList.toggle('hidden');
-  });
+  if (balanceMeta) {
+    balanceMeta.classList.add('meta-interactive');
+    balanceMeta.addEventListener('click', () => {
+      debugMenu.classList.toggle('hidden');
+    });
+  }
 
   closeDebug.addEventListener('click', () => {
     debugMenu.classList.add('hidden');

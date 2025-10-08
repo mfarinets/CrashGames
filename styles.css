@@ -378,6 +378,10 @@ button.ghost {
   color: #f9fafb;
 }
 
+.meta.meta-interactive {
+  cursor: pointer;
+}
+
 .hidden {
   display: none !important;
 }

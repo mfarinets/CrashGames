@@ -6,6 +6,7 @@ import {
   PIPE,
   COLORS,
   UI_THEME,
+  BIRD_SPRITES,
 } from './constants.js';
 import { LEVELS } from '../data/levels.js';
 import { AUTOPILOT_PRESETS } from '../data/autopilotPresets.js';
@@ -44,6 +45,8 @@ export class Game {
     this.pipes = [];
     this.parallaxClouds = buildClouds();
     this.crashSequence = null;
+    this.birdSpriteCache = {};
+    this.loadBirdSprite(this.level.id);
     this.pipeSpriteManager = new PipeSpriteManager();
     const defaultSet = this.pipeSpriteManager.getSet('metal');
     defaultSet?.top?.requestLoad();
@@ -81,6 +84,7 @@ export class Game {
     const level = LEVELS[levelId];
     if (!level) return;
     this.level = level;
+    this.loadBirdSprite(levelId);
     this.crashIndex = 0;
     this.crashPoint = level.crashPoints[0] ?? null;
     this.loadAutopilotScript(this.crashIndex);
@@ -113,6 +117,29 @@ export class Game {
     if (this.roundState !== 'running') {
       this.autopilot.setScript(this.autopilotScript);
     }
+  }
+
+  loadBirdSprite(levelId) {
+    if (this.birdSpriteCache[levelId]) return;
+    const config = BIRD_SPRITES[levelId];
+    if (!config || !config.src) {
+      this.birdSpriteCache[levelId] = { status: 'none' };
+      return;
+    }
+    const image = new Image();
+    this.birdSpriteCache[levelId] = { status: 'loading', image };
+    image.onload = () => {
+      this.birdSpriteCache[levelId] = {
+        status: 'ready',
+        image,
+        width: config.width || BIRD.width,
+        height: config.height || BIRD.height,
+      };
+    };
+    image.onerror = () => {
+      this.birdSpriteCache[levelId] = { status: 'error' };
+    };
+    image.src = config.src;
   }
 
   startRound({ crashIndex }) {
@@ -439,7 +466,7 @@ export class Game {
     drawBackground(ctx, this.level);
     drawClouds(ctx, this.parallaxClouds);
     drawPipes(ctx, this.pipes, this.level, this.pipeSpriteManager);
-    drawBird(ctx, this.bird);
+    drawBird(ctx, this.bird, this.birdSpriteCache[this.level.id]);
     drawGround(ctx, this.level);
     if (this.roundState === 'crashed') {
       drawCrashOverlay(ctx);
@@ -584,28 +611,40 @@ function drawPipes(ctx, pipes, level, spriteManager) {
   }
 }
 
-function drawBird(ctx, bird) {
+function drawBird(ctx, bird, spriteEntry) {
   ctx.save();
   const birdX = WORLD.birdX;
   const birdY = bird.y;
   ctx.translate(birdX, birdY);
   ctx.rotate(bird.rotation * RADIANS_PER_DEGREE);
-  ctx.fillStyle = '#fde047';
-  drawRoundedRectPath(
-    ctx,
-    -BIRD.width / 2,
-    -BIRD.height / 2,
-    BIRD.width,
-    BIRD.height,
-    12
-  );
-  ctx.fill();
-  ctx.fillStyle = '#f97316';
-  ctx.fillRect(BIRD.width / 4, -6, BIRD.width / 3, 12);
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath();
-  ctx.arc(BIRD.width / 6, -BIRD.height / 6, 5, 0, Math.PI * 2);
-  ctx.fill();
+  if (spriteEntry && spriteEntry.status === 'ready') {
+    const width = spriteEntry.width || BIRD.width;
+    const height = spriteEntry.height || BIRD.height;
+    ctx.drawImage(
+      spriteEntry.image,
+      -width / 2,
+      -height / 2,
+      width,
+      height
+    );
+  } else {
+    ctx.fillStyle = '#fde047';
+    drawRoundedRectPath(
+      ctx,
+      -BIRD.width / 2,
+      -BIRD.height / 2,
+      BIRD.width,
+      BIRD.height,
+      12
+    );
+    ctx.fill();
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(BIRD.width / 4, -6, BIRD.width / 3, 12);
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(BIRD.width / 6, -BIRD.height / 6, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 

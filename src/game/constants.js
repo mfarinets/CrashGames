@@ -42,10 +42,23 @@ export const PIPE_SPRITES = {
   },
 };
 
+export const BIRD_SPRITES = {
+  medium: {
+    src: 'assets/birds/classic.png',
+    width: 64,
+    height: 48,
+  },
+  devil: {
+    src: 'assets/birds/high-volatility.png',
+    width: 64,
+    height: 48,
+  },
+};
+
 export const UI_THEME = {
   multiplier: {
-    centerFontSize: 52,
-    centerColor: '#ffffffff',
+    centerFontSize: 34,
+    centerColor: '#111827',
     pipeLabelBaseColor: '#ffffff',
     pipeLabelPassedColor: '#facc15',
   },
@@ -81,12 +94,12 @@ export const UI_THEME = {
     devil: {
       buttons: {
         ready: {
-           background: 'linear-gradient(180deg, #4ade80 0%, #22c55e 100%)',
-          textColor: '#052e16',
-          subtextColor: '#09421c',
-          borderColor: '#16a34a',
+          background: 'linear-gradient(180deg, #67e8f9 0%, #38bdf8 100%)',
+          textColor: '#082f49',
+          subtextColor: '#0e7490',
+          borderColor: '#0ea5e9',
           borderRadius: 26,
-          boxShadow: '0 16px 32px rgba(34, 197, 94, 0.35)',
+          boxShadow: '0 16px 32px rgba(14, 165, 233, 0.32)',
         },
         running: {
           background: 'linear-gradient(180deg, #fb7185 0%, #f43f5e 100%)',

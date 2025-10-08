@@ -34,7 +34,7 @@ export const LEVELS = {
   },
   devil: {
     id: 'devil',
-    name: 'Devil',
+    name: 'High Volatility',
     description: 'Lava floor, tighter windows, 18 crash points.',
     groundTheme: 'lava',
     gapBaseline: 340,
