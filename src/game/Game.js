@@ -14,6 +14,8 @@ import { PipeSpriteManager } from './pipeSprites.js';
 
 const RADIANS_PER_DEGREE = Math.PI / 180;
 const MULTIPLIER_HIGHLIGHT_DURATION = 0.35;
+const IMMEDIATE_CRASH_SCRIPT = [70, 140];
+const IMMEDIATE_CRASH_DISTANCE = 240;
 
 export class Game {
   constructor(canvas, callbacks = {}) {
@@ -47,6 +49,8 @@ export class Game {
     this.crashSequence = null;
     this.birdSpriteCache = {};
     this.loadBirdSprite(this.level.id);
+    this.forceImmediateCrash = false;
+    this.immediateCrashDistance = IMMEDIATE_CRASH_DISTANCE;
     this.pipeSpriteManager = new PipeSpriteManager();
     const defaultSet = this.pipeSpriteManager.getSet('metal');
     defaultSet?.top?.requestLoad();
@@ -102,6 +106,7 @@ export class Game {
   }
 
   getMultiplierForCrashIndex(index) {
+    if (index < 0) return 0;
     return this.level.crashPoints[index] ?? null;
   }
 
@@ -112,10 +117,14 @@ export class Game {
   }
 
   loadAutopilotScript(crashIndex = this.crashIndex ?? 0) {
+    if (crashIndex < 0) {
+      this.autopilotScript = [];
+      return;
+    }
     const script = resolveAutopilotScript(this.level, crashIndex);
     this.autopilotScript = script;
     if (this.roundState !== 'running') {
-      this.autopilot.setScript(this.autopilotScript);
+      this.autopilot.setScript(this.autopilotScript || []);
     }
   }
 
@@ -144,13 +153,11 @@ export class Game {
 
   startRound({ crashIndex }) {
     if (this.roundState === 'running') return;
-    if (!this.isCrashIndexValid(crashIndex)) {
+    const instantCrash = crashIndex === -1;
+    if (!instantCrash && !this.isCrashIndexValid(crashIndex)) {
       this.callbacks?.onStatus?.('Invalid crash order');
       return;
     }
-    this.crashIndex = crashIndex;
-    this.crashPoint = this.getMultiplierForCrashIndex(crashIndex);
-    this.loadAutopilotScript(this.crashIndex);
     this.roundState = 'running';
     this.currentMultiplier = 1.0;
     this.scrollOffset = 0;
@@ -162,10 +169,27 @@ export class Game {
     this.bird = createBird();
     this.pipes = buildRoundPipes(this.level);
     this.autopilot.reset();
-    this.autopilot.setScript(this.autopilotScript);
-    this.forcedCrashPipeId = this.trainerMode
-      ? null
-      : determineCrashPipeId(this.level, this.crashIndex);
+    if (instantCrash) {
+      this.crashIndex = -1;
+      this.crashPoint = 0;
+      this.autopilotScript = [];
+      this.autopilot.setScript(IMMEDIATE_CRASH_SCRIPT);
+      this.autopilot.setFallbackEnabled(false);
+      this.forceImmediateCrash = true;
+      this.immediateCrashDistance = IMMEDIATE_CRASH_DISTANCE;
+      this.forcedCrashPipeId = null;
+    } else {
+      this.crashIndex = crashIndex;
+      this.crashPoint = this.getMultiplierForCrashIndex(crashIndex);
+      this.loadAutopilotScript(this.crashIndex);
+      this.autopilot.setScript(this.autopilotScript || []);
+      this.autopilot.setFallbackEnabled(true);
+      this.forceImmediateCrash = false;
+      this.immediateCrashDistance = IMMEDIATE_CRASH_DISTANCE;
+      this.forcedCrashPipeId = this.trainerMode
+        ? null
+        : determineCrashPipeId(this.level, this.crashIndex);
+    }
     this.callbacks?.onStatus?.('Running');
     this.callbacks?.onMultiplier?.(this.currentMultiplier);
   }
@@ -188,6 +212,7 @@ export class Game {
     if (this.roundState !== 'running') return null;
     this.autopilot.lock();
     this.crashSequence = null;
+    this.forceImmediateCrash = false;
     const result = {
       type: reason,
       multiplier: this.currentMultiplier,
@@ -200,6 +225,8 @@ export class Game {
     this.roundState = status;
     this.crashSequence = null;
     this.autopilot.lock();
+    this.forceImmediateCrash = false;
+    this.autopilot.setFallbackEnabled(true);
     if (status === 'crashed') {
       this.callbacks?.onCrash?.({
         status,
@@ -224,10 +251,13 @@ export class Game {
     this.elapsed = 0;
     this.trainerLog = [];
     this.autopilot.reset();
-    this.autopilot.setScript(this.autopilotScript);
+    this.autopilot.setScript(this.autopilotScript || []);
     this.bird = createBird();
     this.pipes = buildRoundPipes(this.level);
     this.crashSequence = null;
+    this.forceImmediateCrash = false;
+    this.immediateCrashDistance = IMMEDIATE_CRASH_DISTANCE;
+    this.autopilot.setFallbackEnabled(true);
     this.crashPoint = this.getMultiplierForCrashIndex(this.crashIndex);
     this.callbacks?.onStatus?.('Idle');
     this.callbacks?.onMultiplier?.(this.currentMultiplier);
@@ -279,6 +309,17 @@ export class Game {
         level: this.level,
       });
       if (shouldFlap) this.handleFlap('autopilot');
+    }
+
+    if (
+      this.forceImmediateCrash &&
+      this.distanceTravelled >= this.immediateCrashDistance
+    ) {
+      this.forceImmediateCrash = false;
+      this.currentMultiplier = 0;
+      this.callbacks?.onMultiplier?.(this.currentMultiplier);
+      this.forceCrash('scripted');
+      return;
     }
 
     if (this.crashSequence) {
@@ -729,18 +770,24 @@ class AutopilotController {
     this.cooldown = 0;
     this.minInterval = 0.12;
     this.locked = false;
+    this.fallbackEnabled = true;
   }
 
   reset() {
     this.pointer = 0;
     this.cooldown = 0;
     this.locked = false;
+    this.fallbackEnabled = true;
   }
 
   setScript(script = []) {
     this.script = Array.isArray(script) ? [...script] : [];
     this.pointer = 0;
     this.locked = false;
+  }
+
+  setFallbackEnabled(flag = true) {
+    this.fallbackEnabled = flag;
   }
 
   lock() {
@@ -769,6 +816,10 @@ class AutopilotController {
     }
 
     if (this.script.length > 0) {
+      return false;
+    }
+
+    if (!this.fallbackEnabled) {
       return false;
     }
 

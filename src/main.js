@@ -82,7 +82,7 @@ function applyTheme(levelId) {
 
 let balance = 1000;
 let betIndex = Math.max(0, BET_STEPS.indexOf(10));
-let selectedCrashIndex = 0;
+let selectedCrashOption = 'random';
 let currentLevel = LEVELS.medium;
 let roundActive = false;
 let trainerScript = null;
@@ -111,16 +111,16 @@ const game = new Game(canvas, {
 init();
 
 function init() {
-  renderCrashOptions(currentLevel);
-  selectedCrashIndex = Number(crashSelect.value);
+  renderCrashOptions(currentLevel, selectedCrashOption);
+  selectedCrashOption = crashSelect.value;
   updateBalanceDisplay();
   updateBetDisplay();
   applyTheme(currentLevel.id);
   updateMultiplierDisplay(1, false);
   updateUIForLevel(currentLevel);
   setPrimaryButton(BUTTON_STATES.READY);
+  ensureAutopilotPreview(selectedCrashOption, currentLevel);
   attachEventListeners();
-  game.loadAutopilotScript(selectedCrashIndex);
 }
 
 function attachEventListeners() {
@@ -132,17 +132,18 @@ function attachEventListeners() {
       currentLevel = level;
       modeButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
       game.setLevel(levelId);
-      renderCrashOptions(level);
-      selectedCrashIndex = Number(crashSelect.value);
-      game.loadAutopilotScript(selectedCrashIndex);
+      selectedCrashOption = 'random';
+      renderCrashOptions(level, selectedCrashOption);
+      selectedCrashOption = crashSelect.value;
+      ensureAutopilotPreview(selectedCrashOption, level);
       updateUIForLevel(level);
       resetPostRoundUI();
     });
   });
 
   crashSelect.addEventListener('change', () => {
-    selectedCrashIndex = Number(crashSelect.value);
-    game.loadAutopilotScript(selectedCrashIndex);
+    selectedCrashOption = crashSelect.value;
+    ensureAutopilotPreview(selectedCrashOption, currentLevel);
   });
 
   trainerToggle.addEventListener('change', () => {
@@ -156,6 +157,10 @@ function attachEventListeners() {
     balanceMeta.addEventListener('click', () => {
       debugMenu.classList.toggle('hidden');
     });
+  }
+
+  if (moreButton) {
+    moreButton.style.pointerEvents = 'none';
   }
 
   closeDebug.addEventListener('click', () => {
@@ -212,7 +217,8 @@ function attachEventListeners() {
 
 function startRound() {
   if (roundActive) return;
-  if (!game.isCrashIndexValid(selectedCrashIndex)) {
+  const crashIndex = resolveCrashIndex(currentLevel, selectedCrashOption);
+  if (crashIndex >= 0 && !game.isCrashIndexValid(crashIndex)) {
     statusLabel.textContent = 'Invalid crash order.';
     return;
   }
@@ -236,7 +242,7 @@ function startRound() {
   disableBetSpinner(true);
   trainerToggle.disabled = true;
   crashSelect.disabled = true;
-  game.startRound({ crashIndex: selectedCrashIndex });
+  game.startRound({ crashIndex });
 }
 
 function handleCashOut() {
@@ -245,29 +251,84 @@ function handleCashOut() {
   if (!result) return;
 }
 
-function renderCrashOptions(level, preferredIndex = 0) {
+function renderCrashOptions(level, preferredOption = 'random') {
   crashSelect.innerHTML = '';
   const points = Array.isArray(level?.crashPoints) ? level.crashPoints : [];
+
+  const randomOption = document.createElement('option');
+  randomOption.value = 'random';
+  randomOption.textContent = 'Random';
+  crashSelect.appendChild(randomOption);
+
+  const instantOption = document.createElement('option');
+  instantOption.value = 'instant';
+  instantOption.textContent = 'Instant Bust ×0.00';
+  crashSelect.appendChild(instantOption);
+
   points.forEach((value, index) => {
     const option = document.createElement('option');
-    option.value = index;
+    option.value = String(index);
     option.textContent = `#${index + 1} ×${Number(value).toFixed(2)}`;
     crashSelect.appendChild(option);
   });
-  if (!points.length) {
-    crashSelect.value = '';
-    return;
+
+  const validValues = new Set(Array.from(crashSelect.options).map((opt) => opt.value));
+  if (!validValues.has(preferredOption)) {
+    preferredOption = 'random';
   }
-  const clampIndex = Math.max(
-    0,
-    Math.min(Number.isInteger(preferredIndex) ? preferredIndex : 0, points.length - 1)
-  );
-  crashSelect.value = String(clampIndex);
+  crashSelect.value = preferredOption;
+}
+
+function ensureAutopilotPreview(option, level = currentLevel) {
+  if (!level) return;
+  const index = option === 'random' || option === 'instant' ? 0 : Number(option);
+  if (Number.isInteger(index) && index >= 0) {
+    game.loadAutopilotScript(index);
+  }
+}
+
+function resolveCrashIndex(level, option) {
+  if (option === 'random') {
+    return pickRandomCrashIndex(level);
+  }
+  if (option === 'instant') {
+    return -1;
+  }
+  const index = Number(option);
+  return Number.isInteger(index) ? index : 0;
+}
+
+function pickRandomCrashIndex(level) {
+  const points = Array.isArray(level?.crashPoints) ? level.crashPoints : [];
+  const weights = Array.isArray(level?.randomCrashWeights)
+    ? level.randomCrashWeights
+    : [];
+  const expectedLength = points.length + 1;
+  if (weights.length >= expectedLength) {
+    const total = weights.reduce((sum, weight) => sum + (weight || 0), 0);
+    if (total > 0) {
+      let roll = Math.random() * total;
+      for (let i = 0; i < weights.length; i += 1) {
+        roll -= weights[i] || 0;
+        if (roll <= 0) {
+          return i - 1;
+        }
+      }
+      return Math.min(weights.length - 2, points.length - 1);
+    }
+  }
+  const fallbackCount = points.length + 1;
+  const randomIndex = Math.floor(Math.random() * fallbackCount);
+  return randomIndex - 1;
 }
 
 function triggerCrashHighlight(multiplier) {
   if (crashHighlightTimer) {
     clearTimeout(crashHighlightTimer);
+  }
+  if (multiplierPulseTimer) {
+    clearTimeout(multiplierPulseTimer);
+    multiplierPulseTimer = null;
   }
   const highlightDuration = 1000;
   currentMultiplierEl.textContent = `×${multiplier.toFixed(2)}`;
