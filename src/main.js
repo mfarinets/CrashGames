@@ -37,6 +37,7 @@ const winAmount = document.getElementById('win-amount');
 const multiplierContainer = document.getElementById('multiplier-container');
 const currentMultiplierEl = document.getElementById('current-multiplier');
 const root = document.documentElement;
+const pinchGestureHandlers = [];
 
 const BET_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
 const BUTTON_STATES = {
@@ -138,6 +139,8 @@ function init() {
   setPrimaryButton(BUTTON_STATES.READY);
   ensureAutopilotPreview(selectedCrashOption, currentLevel);
   attachEventListeners();
+  disablePinchZoom();
+  window.addEventListener('beforeunload', enablePinchZoom, { once: true });
 }
 
 function attachEventListeners() {
@@ -246,6 +249,36 @@ function attachEventListeners() {
         }, 1500);
       }
     });
+  }
+}
+
+function disablePinchZoom() {
+  if (pinchGestureHandlers.length) return;
+  const preventGesture = (event) => {
+    event.preventDefault();
+  };
+  const preventMultiTouch = (event) => {
+    if (event.touches && event.touches.length > 1) {
+      event.preventDefault();
+    }
+  };
+  const gestures = ['gesturestart', 'gesturechange', 'gestureend'];
+  gestures.forEach((type) => {
+    document.addEventListener(type, preventGesture, { passive: false });
+    pinchGestureHandlers.push({ type, listener: preventGesture, options: { passive: false } });
+  });
+  document.addEventListener('touchmove', preventMultiTouch, { passive: false });
+  pinchGestureHandlers.push({
+    type: 'touchmove',
+    listener: preventMultiTouch,
+    options: { passive: false },
+  });
+}
+
+function enablePinchZoom() {
+  while (pinchGestureHandlers.length) {
+    const { type, listener, options } = pinchGestureHandlers.pop();
+    document.removeEventListener(type, listener, options);
   }
 }
 
