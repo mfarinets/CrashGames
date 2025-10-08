@@ -1,5 +1,6 @@
 import { Game } from './game/Game.js';
 import { LEVELS } from './data/levels.js';
+import { UI_THEME } from './game/constants.js';
 
 const canvas = document.getElementById('game-canvas');
 const balanceDisplay = document.getElementById('balance-display');
@@ -26,6 +27,7 @@ const winOverlay = document.getElementById('win-overlay');
 const winAmount = document.getElementById('win-amount');
 const multiplierContainer = document.getElementById('multiplier-container');
 const currentMultiplierEl = document.getElementById('current-multiplier');
+const root = document.documentElement;
 
 const BET_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
 const BUTTON_STATES = {
@@ -34,6 +36,48 @@ const BUTTON_STATES = {
   WIN: 'win',
   IDLE: 'idle',
 };
+
+function getModeTheme(levelId) {
+  return UI_THEME.modes[levelId] ?? UI_THEME.modes.classic;
+}
+
+function applyTheme(levelId) {
+  activeModeTheme = getModeTheme(levelId);
+  const multiplierTheme = UI_THEME.multiplier;
+  root.style.setProperty(
+    '--multiplier-font-size',
+    `${multiplierTheme.centerFontSize}px`
+  );
+  root.style.setProperty('--multiplier-color', multiplierTheme.centerColor);
+  root.style.setProperty(
+    '--multiplier-pulse-color',
+    multiplierTheme.pipeLabelPassedColor
+  );
+  currentMultiplierEl.style.fontSize = `${multiplierTheme.centerFontSize}px`;
+  currentMultiplierEl.style.color = multiplierTheme.centerColor;
+  const readyTheme =
+    activeModeTheme.buttons?.ready ?? UI_THEME.modes.classic.buttons.ready;
+  if (readyTheme) {
+    root.style.setProperty('--cta-bg', readyTheme.background ?? '');
+    root.style.setProperty('--cta-color', readyTheme.textColor ?? '');
+    root.style.setProperty(
+      '--cta-subtext-color',
+      readyTheme.subtextColor ?? readyTheme.textColor ?? ''
+    );
+    root.style.setProperty('--cta-shadow', readyTheme.boxShadow ?? 'none');
+    root.style.setProperty(
+      '--cta-border',
+      readyTheme.borderColor ? `1px solid ${readyTheme.borderColor}` : 'none'
+    );
+    root.style.setProperty(
+      '--cta-radius',
+      readyTheme.borderRadius != null
+        ? `${readyTheme.borderRadius}px`
+        : '24px'
+    );
+  }
+  applyButtonThemeForState(buttonState);
+}
 
 let balance = 1000;
 let betIndex = Math.max(0, BET_STEPS.indexOf(10));
@@ -47,6 +91,7 @@ let lastWinAmount = 0;
 let winResetTimer = null;
 let previousMultiplier = 1;
 let multiplierPulseTimer = null;
+let activeModeTheme = UI_THEME.modes.classic;
 
 const game = new Game(canvas, {
   onStatus: handleStatusUpdate,
@@ -64,6 +109,7 @@ function init() {
   selectedCrashIndex = Number(crashSelect.value);
   updateBalanceDisplay();
   updateBetDisplay();
+  applyTheme(currentLevel.id);
   updateMultiplierDisplay(1, false);
   updateUIForLevel(currentLevel);
   setPrimaryButton(BUTTON_STATES.READY);
@@ -236,6 +282,8 @@ function updatePayoutPreview(multiplier) {
 
 function updateMultiplierDisplay(value, animate = true) {
   currentMultiplierEl.textContent = `×${value.toFixed(2)}`;
+  currentMultiplierEl.style.color = UI_THEME.multiplier.centerColor;
+  currentMultiplierEl.style.fontSize = `${UI_THEME.multiplier.centerFontSize}px`;
   if (!animate) {
     multiplierContainer.classList.remove('pulse');
     return;
@@ -253,23 +301,19 @@ function updateMultiplierDisplay(value, animate = true) {
 
 function setPrimaryButton(state, opts = {}) {
   buttonState = state;
-  primaryButton.classList.remove('ready', 'cashout', 'win');
   switch (state) {
     case BUTTON_STATES.READY:
-      primaryButton.classList.add('ready');
       ctaLabel.textContent = 'Bet';
       ctaSubtext.textContent = formatCurrency(BET_STEPS[betIndex]);
       winOverlay.classList.add('hidden');
       disableBetSpinner(false);
       break;
     case BUTTON_STATES.RUNNING:
-      primaryButton.classList.add('cashout');
       ctaLabel.textContent = 'Cash Out';
       ctaSubtext.textContent = formatCurrency(activeBet);
       disableBetSpinner(true);
       break;
     case BUTTON_STATES.WIN:
-      primaryButton.classList.add('win');
       ctaLabel.textContent = opts.label ?? 'You Cashed Out';
       ctaSubtext.textContent = formatCurrency(opts.amount ?? 0);
       winAmount.textContent = formatCurrency(opts.amount ?? 0);
@@ -279,15 +323,52 @@ function setPrimaryButton(state, opts = {}) {
       disableBetSpinner(false);
       break;
     default:
-      primaryButton.classList.add('ready');
       ctaLabel.textContent = 'Bet';
       ctaSubtext.textContent = formatCurrency(BET_STEPS[betIndex]);
       disableBetSpinner(false);
       break;
   }
+  applyButtonThemeForState(state);
   if (state !== BUTTON_STATES.WIN) {
     updateBetDisplay();
   }
+}
+
+function applyButtonThemeForState(state) {
+  const key =
+    state === BUTTON_STATES.RUNNING
+      ? 'running'
+      : state === BUTTON_STATES.WIN
+      ? 'win'
+      : 'ready';
+  const defaultButtons = UI_THEME.modes.classic.buttons;
+  const fallback = defaultButtons[key] ?? defaultButtons.ready;
+  const theme = activeModeTheme.buttons?.[key] ?? fallback;
+  if (!theme) return;
+  const {
+    background,
+    textColor,
+    subtextColor,
+    borderColor,
+    borderRadius,
+    boxShadow,
+    labelFontSize,
+    subtextFontSize,
+  } = theme;
+  primaryButton.style.background = background ?? '';
+  primaryButton.style.color = textColor ?? '';
+  primaryButton.style.boxShadow = boxShadow ?? 'none';
+  primaryButton.style.border = borderColor ? `1px solid ${borderColor}` : 'none';
+  primaryButton.style.borderRadius =
+    borderRadius != null ? `${borderRadius}px` : '';
+  ctaLabel.style.color = textColor ?? '';
+  ctaSubtext.style.color = subtextColor ?? textColor ?? '';
+  ctaLabel.style.fontSize = labelFontSize
+    ? `${labelFontSize}px`
+    : '';
+  ctaSubtext.style.fontSize = subtextFontSize
+    ? `${subtextFontSize}px`
+    : '';
 }
 
 function disableBetSpinner(disabled) {
@@ -335,6 +416,7 @@ function handleTrainerToggle(enabled) {
 
 function handleLevelChange(level) {
   currentLevel = level;
+  applyTheme(level.id);
   updateUIForLevel(level);
 }
 

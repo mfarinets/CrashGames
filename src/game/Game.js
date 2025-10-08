@@ -5,6 +5,7 @@ import {
   BIRD,
   PIPE,
   COLORS,
+  UI_THEME,
 } from './constants.js';
 import { LEVELS } from '../data/levels.js';
 import { AUTOPILOT_PRESETS } from '../data/autopilotPresets.js';
@@ -508,6 +509,8 @@ function drawPipes(ctx, pipes, level, spriteManager) {
     level.groundTheme === 'lava' ? '#ea580c' : COLORS.pipeBottom;
   const pipeTopPassed = level.groundTheme === 'lava' ? '#fb923c' : '#4ade80';
   const pipeBottomPassed = level.groundTheme === 'lava' ? '#f97316' : '#22c55e';
+  const pipeLabelBaseColor = UI_THEME.multiplier.pipeLabelBaseColor;
+  const pipeLabelPassedColor = UI_THEME.multiplier.pipeLabelPassedColor;
 
   for (const pipe of pipes) {
     const gapTop = pipe.gapCenter - pipe.gapHeight / 2;
@@ -563,7 +566,9 @@ function drawPipes(ctx, pipes, level, spriteManager) {
     ctx.save();
     ctx.translate(pipe.x + PIPE.width / 2, labelY);
     ctx.scale(scale, scale);
-    ctx.fillStyle = pipe.passed ? '#facc15' : 'rgba(15,23,42,0.78)';
+    ctx.fillStyle = pipe.passed
+      ? pipeLabelPassedColor
+      : pipeLabelBaseColor;
     ctx.fillText(`×${pipe.multiplier.toFixed(2)}`, 0, 0);
     ctx.restore();
   }

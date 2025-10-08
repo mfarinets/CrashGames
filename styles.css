@@ -14,6 +14,18 @@ body {
   align-items: center;
 }
 
+:root {
+  --multiplier-font-size: 24px;
+  --multiplier-color: #f1f5f9;
+  --multiplier-pulse-color: #facc15;
+  --cta-bg: linear-gradient(180deg, #4ade80, #22c55e);
+  --cta-color: #052e16;
+  --cta-subtext-color: #09421c;
+  --cta-shadow: 0 16px 32px rgba(34, 197, 94, 0.35);
+  --cta-border: none;
+  --cta-radius: 24px;
+}
+
 #app {
   position: relative;
   width: 100vw;
@@ -72,9 +84,9 @@ button:disabled {
 }
 
 .multiplier-strip strong {
-  font-size: 24px;
+  font-size: var(--multiplier-font-size, 24px);
   font-weight: 800;
-  color: #f1f5f9;
+  color: var(--multiplier-color, #f1f5f9);
   letter-spacing: normal;
   transition: transform 0.25s ease, color 0.25s ease;
   transform-origin: center;
@@ -82,7 +94,7 @@ button:disabled {
 
 .multiplier-strip.pulse strong {
   transform: scale(1.18);
-  color: #facc15;
+  color: var(--multiplier-pulse-color, #facc15);
 }
 
 .mode-switch {
@@ -317,7 +329,7 @@ button.ghost {
 .cta {
   border: none;
   width: min(320px, calc(100vw - 80px));
-  border-radius: 24px;
+  border-radius: var(--cta-radius, 24px);
   padding: 18px 24px;
   font-size: 18px;
   font-weight: 700;
@@ -328,33 +340,21 @@ button.ghost {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-}
-
-.cta.ready {
-  background: linear-gradient(180deg, #4ade80, #22c55e);
-  color: #052e16;
-  box-shadow: 0 16px 32px rgba(34, 197, 94, 0.35);
-}
-
-.cta.cashout {
-  background: linear-gradient(180deg, #f87171, #ef4444);
-  color: #450a0a;
-  box-shadow: 0 16px 32px rgba(239, 68, 68, 0.32);
-}
-
-.cta.win {
-  background: linear-gradient(180deg, #facc15, #eab308);
-  color: #422006;
-  box-shadow: 0 16px 32px rgba(234, 179, 8, 0.32);
+  background: var(--cta-bg, linear-gradient(180deg, #4ade80, #22c55e));
+  color: var(--cta-color, #052e16);
+  box-shadow: var(--cta-shadow, 0 16px 32px rgba(34, 197, 94, 0.35));
+  border: var(--cta-border, none);
 }
 
 .cta-label {
   font-size: 20px;
+  color: inherit;
 }
 
 .cta small {
   font-size: 14px;
   font-weight: 600;
+  color: var(--cta-subtext-color, rgba(5, 46, 22, 0.85));
 }
 
 .cta:active {
