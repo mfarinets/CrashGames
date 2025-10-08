@@ -15,7 +15,31 @@
       <div class="hud">
         <div class="top-row">
           <div class="mode-switch" id="mode-switch"></div>
-          <button id="more-button" class="chip">Lobby</button>
+          <button id="more-button" class="chip lobby-chip" aria-label="Lobby">
+            <svg
+              class="lobby-icon"
+              width="28"
+              height="28"
+              viewBox="0 0 28 28"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M13.6 7.8c.8-2.8 3-4.6 5.9-4.6h2.7" />
+                <path d="M13.6 7.8c-2.3 2.6-5 3.6-7.8 3.4" />
+                <path d="M15.4 13.6c1.6-2.5 4-4.3 7.2-5" />
+              </g>
+              <circle cx="9" cy="19" r="5" fill="currentColor" />
+              <circle cx="19.5" cy="20.5" r="4.5" fill="currentColor" opacity="0.8" />
+              <path
+                d="M11.2 13.8c-.2-.9-.9-1.4-1.8-1.4-.9 0-1.5.5-1.8 1.3"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                fill="none"
+              />
+            </svg>
+          </button>
         </div>
         <div class="multiplier-strip" id="multiplier-container">
           <strong id="current-multiplier">×1.00</strong>
