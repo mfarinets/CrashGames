@@ -149,7 +149,11 @@ export class Game {
       type: 'cashout',
       multiplier: this.currentMultiplier,
     };
-    this.finishRound('cashed_out');
+    this.callbacks?.onStatus?.('Settled');
+    this.callbacks?.onRoundEnd?.({
+      status: 'cashed_out',
+      multiplier: this.currentMultiplier,
+    });
     return result;
   }
 
@@ -169,6 +173,12 @@ export class Game {
     this.roundState = status;
     this.crashSequence = null;
     this.autopilot.lock();
+    if (status === 'crashed') {
+      this.callbacks?.onCrash?.({
+        status,
+        multiplier: this.currentMultiplier,
+      });
+    }
     this.callbacks?.onStatus?.(status === 'crashed' ? 'Crashed' : 'Settled');
     if (this.trainerMode && this.trainerLog.length) {
       this.callbacks?.onTrainerScript?.([...this.trainerLog]);

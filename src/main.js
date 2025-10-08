@@ -94,6 +94,7 @@ let multiplierPulseTimer = null;
 let activeModeTheme = UI_THEME.modes.classic;
 let awaitingCrashAfterCashout = false;
 let crashHighlightTimer = null;
+let suppressCrashRoundEnd = false;
 
 
 const game = new Game(canvas, {
@@ -103,6 +104,7 @@ const game = new Game(canvas, {
   onRoundEnd: handleRoundEnd,
   onTrainerMode: handleTrainerToggle,
   onLevelChange: handleLevelChange,
+  onCrash: handleCrashFinalize,
 });
 
 init();
@@ -263,13 +265,12 @@ function triggerCrashHighlight(multiplier) {
   if (crashHighlightTimer) {
     clearTimeout(crashHighlightTimer);
   }
-  const highlightDuration = 400;
+  const highlightDuration = 1000;
   currentMultiplierEl.textContent = `×${multiplier.toFixed(2)}`;
   currentMultiplierEl.style.color = UI_THEME.multiplier.pipeLabelPassedColor;
   multiplierContainer.classList.remove('pulse');
   void multiplierContainer.offsetWidth;
   multiplierContainer.classList.add('pulse');
-  currentMultiplierEl.style.color = UI_THEME.multiplier.pipeLabelPassedColor;
   crashHighlightTimer = setTimeout(() => {
     multiplierContainer.classList.remove('pulse');
     currentMultiplierEl.style.color = UI_THEME.multiplier.centerColor;
@@ -408,6 +409,12 @@ function resetPostRoundUI() {
   }
   winOverlay.classList.add('hidden');
   debugMenu.classList.add('hidden');
+  if (crashHighlightTimer) {
+    clearTimeout(crashHighlightTimer);
+    crashHighlightTimer = null;
+  }
+  multiplierContainer.classList.remove('pulse');
+  currentMultiplierEl.style.color = UI_THEME.multiplier.centerColor;
   setPrimaryButton(BUTTON_STATES.READY);
   roundActive = false;
   trainerToggle.disabled = false;
@@ -416,6 +423,7 @@ function resetPostRoundUI() {
   previousMultiplier = 1;
   primaryButton.disabled = false;
   awaitingCrashAfterCashout = false;
+  suppressCrashRoundEnd = false;
   disableBetSpinner(false);
 }
 
@@ -441,6 +449,22 @@ function handleTrainerToggle(enabled) {
   toggleTrainerUI(enabled);
 }
 
+
+function handleCrashFinalize(result) {
+  if (!awaitingCrashAfterCashout) return;
+  const multiplier = result?.multiplier || 1;
+  triggerCrashHighlight(multiplier);
+  awaitingCrashAfterCashout = false;
+  suppressCrashRoundEnd = true;
+  roundActive = false;
+  disableBetSpinner(false);
+  trainerToggle.disabled = false;
+  crashSelect.disabled = false;
+  primaryButton.disabled = false;
+  previousMultiplier = 1;
+  scheduleReset(1200, resetPostRoundUI);
+}
+
 function handleLevelChange(level) {
   currentLevel = level;
   applyTheme(level.id);
@@ -449,6 +473,11 @@ function handleLevelChange(level) {
 
 function handleRoundEnd(result) {
   if (!result) return;
+
+  if (suppressCrashRoundEnd && result.status === 'crashed') {
+    suppressCrashRoundEnd = false;
+    return;
+  }
 
   if (trainerToggle.checked) {
     resetPostRoundUI();
@@ -465,13 +494,12 @@ function handleRoundEnd(result) {
     primaryButton.disabled = true;
     const multiplier = result.multiplier || 1;
     previousMultiplier = multiplier;
-    if (!trainerToggle.checked) {
-      const payout = Number((activeBet * multiplier).toFixed(2));
-      balance += payout;
-      lastWinAmount = payout;
-      updateBalanceDisplay();
-      setPrimaryButton(BUTTON_STATES.WIN, { amount: payout });
-    }
+    const payout = Number((activeBet * multiplier).toFixed(2));
+    balance += payout;
+    lastWinAmount = payout;
+    updateBalanceDisplay();
+    setPrimaryButton(BUTTON_STATES.WIN, { amount: payout });
+    disableBetSpinner(true);
     return;
   }
 
@@ -500,10 +528,13 @@ function handleRoundEnd(result) {
   scheduleReset();
 }
 
-function scheduleReset() {
+function scheduleReset(delay = 600, afterReset) {
   setTimeout(() => {
     game.resetRound();
-  }, 600);
+    if (typeof afterReset === "function") {
+      afterReset();
+    }
+  }, delay);
 }
 
 function toggleTrainerUI(enabled) {
@@ -525,4 +556,3 @@ function updateUIForLevel(level) {
 function formatCurrency(value) {
   return `$${Number(value).toFixed(2)}`;
 }
-

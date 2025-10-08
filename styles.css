@@ -16,7 +16,7 @@ body {
 
 :root {
   --multiplier-font-size: 24px;
-  --multiplier-color: #f1f5f9;
+  --multiplier-color: #111827;
   --multiplier-pulse-color: #facc15;
   --cta-bg: linear-gradient(180deg, #4ade80, #22c55e);
   --cta-color: #052e16;
@@ -95,6 +95,7 @@ button:disabled {
 .multiplier-strip.pulse strong {
   transform: scale(1.18);
   color: var(--multiplier-pulse-color, #facc15);
+  transition-duration: 0.4s;
 }
 
 .mode-switch {
