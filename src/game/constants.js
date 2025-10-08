@@ -20,6 +20,28 @@ export const PIPE = {
   edgePadding: 12,
 };
 
+export const PIPE_SPRITES = {
+  metal: {
+    collisionInset: 8,
+    top: {
+      bodySrc: 'assets/pipes/metal/top-body.png',
+      capSrc: 'assets/pipes/metal/top-cap.png',
+      cropFrom: 'top',
+      capOverlap: 10,
+      capWidthMultiplier: 1.16,
+      bodyWidthMultiplier: 0.9,
+    },
+    bottom: {
+      bodySrc: 'assets/pipes/metal/bottom-body.png',
+      capSrc: 'assets/pipes/metal/bottom-cap.png',
+      cropFrom: 'bottom',
+      capOverlap: 8,
+      capWidthMultiplier: 1.16,
+      bodyWidthMultiplier: 0.9,
+    },
+  },
+};
+
 export const COLORS = {
   skyTop: '#38bdf8',
   skyBottom: '#0f172a',

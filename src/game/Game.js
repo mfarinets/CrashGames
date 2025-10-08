@@ -8,6 +8,7 @@ import {
 } from './constants.js';
 import { LEVELS } from '../data/levels.js';
 import { AUTOPILOT_PRESETS } from '../data/autopilotPresets.js';
+import { PipeSpriteManager } from './pipeSprites.js';
 
 const RADIANS_PER_DEGREE = Math.PI / 180;
 const MULTIPLIER_HIGHLIGHT_DURATION = 0.35;
@@ -42,6 +43,11 @@ export class Game {
     this.pipes = [];
     this.parallaxClouds = buildClouds();
     this.crashSequence = null;
+    this.pipeSpriteManager = new PipeSpriteManager();
+    const defaultSet = this.pipeSpriteManager.getSet('metal');
+    defaultSet?.top?.requestLoad();
+    defaultSet?.bottom?.requestLoad();
+   // preloadPipeSprites();
     this.loadAutopilotScript(this.crashIndex);
 
     this.pointerActive = false;
@@ -297,8 +303,12 @@ export class Game {
       pipe.x = pipe.spawnX - this.scrollOffset;
       const birdLeft = WORLD.birdX - BIRD.width / 2;
       const birdRight = WORLD.birdX + BIRD.width / 2;
-      const pipeLeft = pipe.x;
-      const pipeRight = pipe.x + PIPE.width;
+      const collisionInset = this.pipeSpriteManager?.getCollisionInset(
+        pipe.spriteKey
+      );
+      const inset = collisionInset ?? 0;
+      const pipeLeft = pipe.x + inset;
+      const pipeRight = pipe.x + PIPE.width - inset;
 
       if (!pipe.passed && pipeRight < birdLeft) {
         pipe.passed = true;
@@ -417,7 +427,7 @@ export class Game {
     ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     drawBackground(ctx, this.level);
     drawClouds(ctx, this.parallaxClouds);
-    drawPipes(ctx, this.pipes, this.level);
+    drawPipes(ctx, this.pipes, this.level, this.pipeSpriteManager);
     drawBird(ctx, this.bird);
     drawGround(ctx, this.level);
     if (this.roundState === 'crashed') {
@@ -485,7 +495,7 @@ function drawClouds(ctx, clouds) {
   }
 }
 
-function drawPipes(ctx, pipes, level) {
+function drawPipes(ctx, pipes, level, spriteManager) {
   ctx.strokeStyle = 'rgba(15,23,42,0.35)';
   ctx.lineWidth = 2;
   ctx.textAlign = 'center';
@@ -502,31 +512,53 @@ function drawPipes(ctx, pipes, level) {
   for (const pipe of pipes) {
     const gapTop = pipe.gapCenter - pipe.gapHeight / 2;
     const gapBottom = pipe.gapCenter + pipe.gapHeight / 2;
-
-    const usedTopColor = pipe.passed ? pipeTopPassed : pipeTopColorBase;
-    const usedBottomColor = pipe.passed
-      ? pipeBottomPassed
-      : pipeBottomColorBase;
-
-    ctx.fillStyle = usedTopColor;
-    drawRoundedRectPath(ctx, pipe.x, 0, PIPE.width, gapTop, 14);
-    ctx.fill();
-
-    ctx.fillStyle = usedBottomColor;
-    const bottomHeight = Math.max(
-      0,
-      VIRTUAL_HEIGHT - gapBottom - WORLD.groundHeight
-    );
-    if (bottomHeight > 2) {
-      drawRoundedRectPath(ctx, pipe.x, gapBottom, PIPE.width, bottomHeight, 14);
-      ctx.fill();
-    }
-
-    const labelY = Math.max(gapTop - 12, 28);
     const highlightProgress = Math.max(
       0,
       Math.min(1, (pipe.highlightTimer || 0) / MULTIPLIER_HIGHLIGHT_DURATION)
     );
+
+    let topDrawn = false;
+    if (spriteManager) {
+      topDrawn = spriteManager.drawTop(ctx, pipe.spriteKey, pipe.x, gapTop);
+    }
+    if (!topDrawn) {
+      const usedTopColor = pipe.passed ? pipeTopPassed : pipeTopColorBase;
+      ctx.fillStyle = usedTopColor;
+      drawRoundedRectPath(ctx, pipe.x, 0, PIPE.width, gapTop, 14);
+      ctx.fill();
+    }
+
+    const bottomHeight = Math.max(
+      0,
+      VIRTUAL_HEIGHT - gapBottom - WORLD.groundHeight
+    );
+    let bottomDrawn = false;
+    if (spriteManager && bottomHeight > 0) {
+      bottomDrawn = spriteManager.drawBottom(
+        ctx,
+        pipe.spriteKey,
+        pipe.x,
+        gapBottom,
+        bottomHeight
+      );
+    }
+    if (!bottomDrawn && bottomHeight > 2) {
+      const usedBottomColor = pipe.passed
+        ? pipeBottomPassed
+        : pipeBottomColorBase;
+      ctx.fillStyle = usedBottomColor;
+      drawRoundedRectPath(
+        ctx,
+        pipe.x,
+        gapBottom,
+        PIPE.width,
+        bottomHeight,
+        14
+      );
+      ctx.fill();
+    }
+
+    const labelY = Math.max(gapTop - 12, 28);
     const scale = 1 + 0.28 * highlightProgress;
     ctx.save();
     ctx.translate(pipe.x + PIPE.width / 2, labelY);

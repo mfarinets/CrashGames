@@ -80,7 +80,7 @@ function buildPipeConfig(multipliers, { distances, gapHeights, offsets }) {
       gapCenter: baseGapCenter + offset,
       gapHeight,
       spawnX: cursorX,
-      spriteKey: 'classic',
+      spriteKey: 'metal',
     };
   });
 }
