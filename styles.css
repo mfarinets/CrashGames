@@ -125,6 +125,18 @@ button:disabled {
   color: #f8fafc;
 }
 
+.game-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: rgba(226, 232, 240, 0.8);
+}
+
 .chip {
   border: none;
   border-radius: 14px;
@@ -380,6 +392,99 @@ button.ghost {
 
 .meta.meta-interactive {
   cursor: pointer;
+}
+
+.games-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  z-index: 60;
+}
+
+.games-modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+}
+
+.games-modal__content {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 92vw);
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 20px 40px rgba(8, 15, 35, 0.6);
+}
+
+.games-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.games-modal__header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.games-modal__hint {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.38);
+  padding: 14px 16px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.game-option:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.game-option.active {
+  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(45, 212, 191, 0.12);
+}
+
+.game-option__title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #f8fafc;
+}
+
+.game-option__subtitle {
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.72);
 }
 
 .hidden {

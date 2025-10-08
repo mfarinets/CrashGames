@@ -14,11 +14,11 @@
       <canvas id="game-canvas"></canvas>
       <div class="hud">
         <div class="top-row">
-          <div class="mode-switch" id="mode-switch">
-            <button data-level="medium" class="mode-option active">Classic</button>
-            <button data-level="devil" class="mode-option">High Volatility</button>
+          <div class="mode-switch" id="mode-switch"></div>
+          <div class="game-menu">
+            <span id="active-game-name" class="game-name">Crash Flight</span>
+            <button id="more-button" class="chip">More games</button>
           </div>
-          <button id="more-button" class="chip">More games</button>
         </div>
         <div class="multiplier-strip" id="multiplier-container">
           <span class="label">Multiplier</span>
@@ -87,6 +87,25 @@
             <strong id="balance-display">$1,000.00</strong>
           </div>
         </footer>
+      </div>
+    </div>
+    <div
+      id="games-modal"
+      class="games-modal hidden"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div id="games-overlay" class="games-modal__overlay"></div>
+      <div class="games-modal__content">
+        <header class="games-modal__header">
+          <h2>More Games</h2>
+          <button id="games-close-button" class="chip ghost">Close</button>
+        </header>
+        <p class="games-modal__hint">
+          Choose another game to load with the shared Crash UI.
+        </p>
+        <div id="games-list" class="games-list"></div>
       </div>
     </div>
     <script type="module" src="./src/main.js"></script>

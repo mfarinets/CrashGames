@@ -5,11 +5,11 @@ import {
   BIRD,
   PIPE,
   COLORS,
-  UI_THEME,
   BIRD_SPRITES,
 } from './constants.js';
-import { LEVELS } from '../data/levels.js';
-import { AUTOPILOT_PRESETS } from '../data/autopilotPresets.js';
+import { UI_THEME } from '../../common/uiTheme.js';
+import { LEVELS } from './levels.js';
+import { AUTOPILOT_PRESETS } from './autopilotPresets.js';
 import { PipeSpriteManager } from './pipeSprites.js';
 
 const RADIANS_PER_DEGREE = Math.PI / 180;
@@ -59,25 +59,32 @@ export class Game {
     this.loadAutopilotScript(this.crashIndex);
 
     this.pointerActive = false;
-    this.resize();
-    window.addEventListener('resize', () => this.resize());
-    canvas.addEventListener('pointerdown', (event) => {
+    this.isDestroyed = false;
+
+    this.boundFrame = (ts) => this.frame(ts);
+    this.handleResize = () => this.resize();
+    this.handlePointerDown = (event) => {
       event.preventDefault();
       this.pointerActive = true;
       if (this.trainerMode) this.handleFlap('manual');
-    });
-    canvas.addEventListener('pointerup', () => {
+    };
+    this.handlePointerUp = () => {
       this.pointerActive = false;
-    });
-
-    window.addEventListener('keydown', (event) => {
+    };
+    this.handleKeyDown = (event) => {
       if (event.repeat) return;
-      if (event.code === 'Space') {
-        if (this.trainerMode) this.handleFlap('manual');
+      if (event.code === 'Space' && this.trainerMode) {
+        this.handleFlap('manual');
       }
-    });
+    };
 
-    requestAnimationFrame((ts) => this.frame(ts));
+    this.resize();
+    window.addEventListener('resize', this.handleResize);
+    canvas.addEventListener('pointerdown', this.handlePointerDown);
+    canvas.addEventListener('pointerup', this.handlePointerUp);
+    window.addEventListener('keydown', this.handleKeyDown);
+
+    requestAnimationFrame(this.boundFrame);
   }
 
   setCallbacks(callbacks) {
@@ -263,6 +270,15 @@ export class Game {
     this.callbacks?.onMultiplier?.(this.currentMultiplier);
   }
 
+  destroy() {
+    if (this.isDestroyed) return;
+    this.isDestroyed = true;
+    window.removeEventListener('resize', this.handleResize);
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+    this.canvas.removeEventListener('pointerup', this.handlePointerUp);
+    window.removeEventListener('keydown', this.handleKeyDown);
+  }
+
   getStateSnapshot() {
     return {
       roundState: this.roundState,
@@ -274,11 +290,14 @@ export class Game {
   }
 
   frame(timestamp) {
+    if (this.isDestroyed) return;
     const dt = (timestamp - this.lastFrameTime) / 1000;
     this.lastFrameTime = timestamp;
     this.update(dt);
     this.draw();
-    requestAnimationFrame((ts) => this.frame(ts));
+    if (!this.isDestroyed) {
+      requestAnimationFrame(this.boundFrame);
+    }
   }
 
   update(dt) {

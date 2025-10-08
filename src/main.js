@@ -1,6 +1,10 @@
-import { Game } from './game/Game.js';
-import { LEVELS } from './data/levels.js';
-import { UI_THEME } from './game/constants.js';
+import {
+  DEFAULT_GAME_ID,
+  GAME_LIST,
+  createGameInstance,
+  getGameDefinition,
+} from './common/gameCatalog.js';
+import { UI_THEME } from './common/uiTheme.js';
 
 const canvas = document.getElementById('game-canvas');
 const balanceDisplay = document.getElementById('balance-display');
@@ -11,8 +15,13 @@ const statusLabel = document.getElementById('status-label');
 const multiplierLabel = document.getElementById('multiplier-label');
 const copyScriptButton = document.getElementById('copy-script-button');
 const modeSwitch = document.getElementById('mode-switch');
-const modeButtons = modeSwitch.querySelectorAll('.mode-option');
+let modeButtons = [];
 const moreButton = document.getElementById('more-button');
+const gamesModal = document.getElementById('games-modal');
+const gamesOverlay = document.getElementById('games-overlay');
+const gamesCloseButton = document.getElementById('games-close-button');
+const gamesList = document.getElementById('games-list');
+const activeGameNameEl = document.getElementById('active-game-name');
 const debugMenu = document.getElementById('debug-menu');
 const closeDebug = document.getElementById('close-debug');
 const primaryButton = document.getElementById('primary-button');
@@ -83,7 +92,14 @@ function applyTheme(levelId) {
 let balance = 1000;
 let betIndex = Math.max(0, BET_STEPS.indexOf(10));
 let selectedCrashOption = 'random';
-let currentLevel = LEVELS.medium;
+let currentGameId = DEFAULT_GAME_ID;
+let gameDefinition = getGameDefinition(currentGameId);
+if (!gameDefinition && GAME_LIST.length > 0) {
+  currentGameId = GAME_LIST[0].id;
+  gameDefinition = getGameDefinition(currentGameId);
+}
+let currentLevels = gameDefinition?.levels ?? {};
+let currentLevel = resolveDefaultLevel(gameDefinition);
 let roundActive = false;
 let trainerScript = null;
 let buttonState = BUTTON_STATES.READY;
@@ -96,61 +112,51 @@ let activeModeTheme = UI_THEME.modes.classic;
 let awaitingCrashAfterCashout = false;
 let crashHighlightTimer = null;
 let suppressCrashRoundEnd = false;
-
-
-const game = new Game(canvas, {
-  onStatus: handleStatusUpdate,
-  onMultiplier: handleMultiplierUpdate,
-  onTrainerScript: handleTrainerScript,
-  onRoundEnd: handleRoundEnd,
-  onTrainerMode: handleTrainerToggle,
-  onLevelChange: handleLevelChange,
-  onCrash: handleCrashFinalize,
-});
+let game = null;
 
 init();
 
 function init() {
+  currentLevels = gameDefinition?.levels ?? {};
+  currentLevel = currentLevel ?? resolveDefaultLevel(gameDefinition);
+  buildModeButtons(gameDefinition, currentLevel?.id);
+  buildGamesList();
+  game = createGameInstance(currentGameId, canvas, buildGameCallbacks());
+  if (game && currentLevel?.id) {
+    game.setLevel?.(currentLevel.id);
+  }
   renderCrashOptions(currentLevel, selectedCrashOption);
   selectedCrashOption = crashSelect.value;
   updateBalanceDisplay();
   updateBetDisplay();
-  applyTheme(currentLevel.id);
+  if (currentLevel?.id) {
+    applyTheme(currentLevel.id);
+    updateUIForLevel(currentLevel);
+  } else {
+    applyTheme('classic');
+  }
   updateMultiplierDisplay(1, false);
-  updateUIForLevel(currentLevel);
   setPrimaryButton(BUTTON_STATES.READY);
   ensureAutopilotPreview(selectedCrashOption, currentLevel);
+  updateActiveGameName();
   attachEventListeners();
 }
 
 function attachEventListeners() {
-  modeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const levelId = button.dataset.level;
-      const level = LEVELS[levelId];
-      if (!level || currentLevel.id === level.id) return;
-      currentLevel = level;
-      modeButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
-      game.setLevel(levelId);
-      selectedCrashOption = 'random';
-      renderCrashOptions(level, selectedCrashOption);
+  if (crashSelect) {
+    crashSelect.addEventListener('change', () => {
       selectedCrashOption = crashSelect.value;
-      ensureAutopilotPreview(selectedCrashOption, level);
-      updateUIForLevel(level);
-      resetPostRoundUI();
+      ensureAutopilotPreview(selectedCrashOption, currentLevel);
     });
-  });
+  }
 
-  crashSelect.addEventListener('change', () => {
-    selectedCrashOption = crashSelect.value;
-    ensureAutopilotPreview(selectedCrashOption, currentLevel);
-  });
-
-  trainerToggle.addEventListener('change', () => {
-    const enabled = trainerToggle.checked;
-    game.setTrainerMode(enabled);
-    toggleTrainerUI(enabled);
-  });
+  if (trainerToggle) {
+    trainerToggle.addEventListener('change', () => {
+      const enabled = trainerToggle.checked;
+      game?.setTrainerMode?.(enabled);
+      toggleTrainerUI(enabled);
+    });
+  }
 
   if (balanceMeta) {
     balanceMeta.classList.add('meta-interactive');
@@ -160,72 +166,269 @@ function attachEventListeners() {
   }
 
   if (moreButton) {
-    moreButton.style.pointerEvents = 'none';
+    moreButton.addEventListener('click', () => {
+      openGamesModal();
+    });
   }
 
-  closeDebug.addEventListener('click', () => {
-    debugMenu.classList.add('hidden');
-  });
+  if (gamesOverlay) {
+    gamesOverlay.addEventListener('click', () => {
+      closeGamesModal();
+    });
+  }
 
-  betMinus.addEventListener('click', () => {
-    if (roundActive) return;
-    betIndex = Math.max(0, betIndex - 1);
-    updateBetDisplay();
-  });
+  if (gamesCloseButton) {
+    gamesCloseButton.addEventListener('click', () => {
+      closeGamesModal();
+    });
+  }
 
-  betPlus.addEventListener('click', () => {
-    if (roundActive) return;
-    betIndex = Math.min(BET_STEPS.length - 1, betIndex + 1);
-    updateBetDisplay();
-  });
-
-  primaryButton.addEventListener('click', () => {
-    if (buttonState === BUTTON_STATES.READY) {
-      startRound();
-      return;
-    }
-    if (buttonState === BUTTON_STATES.RUNNING) {
-      handleCashOut();
-      return;
-    }
-    if (buttonState === BUTTON_STATES.WIN) {
-      resetPostRoundUI();
-      return;
-    }
-    if (!roundActive) {
-      resetPostRoundUI();
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !isGamesModalHidden()) {
+      closeGamesModal();
     }
   });
 
-  copyScriptButton.addEventListener('click', async () => {
-    if (!trainerScript) return;
-    const payload = JSON.stringify(trainerScript, null, 2);
-    try {
-      await navigator.clipboard.writeText(payload);
-      copyScriptButton.textContent = 'Script Copied';
-      setTimeout(() => {
-        copyScriptButton.textContent = 'Copy Trainer Script';
-      }, 1500);
-    } catch (error) {
-      copyScriptButton.textContent = 'Clipboard failed';
-      setTimeout(() => {
-        copyScriptButton.textContent = 'Copy Trainer Script';
-      }, 1500);
+  if (closeDebug) {
+    closeDebug.addEventListener('click', () => {
+      debugMenu.classList.add('hidden');
+    });
+  }
+
+  if (betMinus) {
+    betMinus.addEventListener('click', () => {
+      if (roundActive) return;
+      betIndex = Math.max(0, betIndex - 1);
+      updateBetDisplay();
+    });
+  }
+
+  if (betPlus) {
+    betPlus.addEventListener('click', () => {
+      if (roundActive) return;
+      betIndex = Math.min(BET_STEPS.length - 1, betIndex + 1);
+      updateBetDisplay();
+    });
+  }
+
+  if (primaryButton) {
+    primaryButton.addEventListener('click', () => {
+      if (buttonState === BUTTON_STATES.READY) {
+        startRound();
+        return;
+      }
+      if (buttonState === BUTTON_STATES.RUNNING) {
+        handleCashOut();
+        return;
+      }
+      if (buttonState === BUTTON_STATES.WIN) {
+        resetPostRoundUI();
+        return;
+      }
+      if (!roundActive) {
+        resetPostRoundUI();
+      }
+    });
+  }
+
+  if (copyScriptButton) {
+    copyScriptButton.addEventListener('click', async () => {
+      if (!trainerScript) return;
+      const payload = JSON.stringify(trainerScript, null, 2);
+      try {
+        await navigator.clipboard.writeText(payload);
+        copyScriptButton.textContent = 'Script Copied';
+        setTimeout(() => {
+          copyScriptButton.textContent = 'Copy Trainer Script';
+        }, 1500);
+      } catch (error) {
+        copyScriptButton.textContent = 'Clipboard failed';
+        setTimeout(() => {
+          copyScriptButton.textContent = 'Copy Trainer Script';
+        }, 1500);
+      }
+    });
+  }
+}
+
+function buildGameCallbacks() {
+  return {
+    onStatus: handleStatusUpdate,
+    onMultiplier: handleMultiplierUpdate,
+    onTrainerScript: handleTrainerScript,
+    onRoundEnd: handleRoundEnd,
+    onTrainerMode: handleTrainerToggle,
+    onLevelChange: handleLevelChange,
+    onCrash: handleCrashFinalize,
+  };
+}
+
+function buildModeButtons(definition, activeLevelId) {
+  if (!modeSwitch) return;
+  modeSwitch.innerHTML = '';
+  const levels = definition?.levels ?? {};
+  const order =
+    Array.isArray(definition?.modeOrder) && definition.modeOrder.length > 0
+      ? definition.modeOrder
+      : Object.keys(levels);
+
+  order.forEach((levelKey) => {
+    const level = levels[levelKey];
+    if (!level) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'mode-option';
+    button.dataset.level = level.id;
+    button.textContent = level.name ?? level.id;
+    if (level.id === activeLevelId) {
+      button.classList.add('active');
     }
+    modeSwitch.appendChild(button);
+  });
+
+  modeButtons = Array.from(modeSwitch.querySelectorAll('.mode-option'));
+  bindModeButtonEvents();
+}
+
+function bindModeButtonEvents() {
+  modeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      handleModeSelection(button.dataset.level);
+    });
   });
 }
 
+function handleModeSelection(levelId) {
+  if (!levelId) return;
+  const level = currentLevels?.[levelId];
+  if (!level || currentLevel?.id === level.id) return;
+  currentLevel = level;
+  modeButtons.forEach((btn) =>
+    btn.classList.toggle('active', btn.dataset.level === level.id)
+  );
+  game?.setLevel?.(levelId);
+  selectedCrashOption = 'random';
+  renderCrashOptions(level, selectedCrashOption);
+  selectedCrashOption = crashSelect.value;
+  ensureAutopilotPreview(selectedCrashOption, level);
+  updateUIForLevel(level);
+  resetPostRoundUI();
+}
+
+function buildGamesList() {
+  if (!gamesList) return;
+  gamesList.innerHTML = '';
+  GAME_LIST.forEach((definition) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'game-option';
+    if (definition.id === currentGameId) {
+      item.classList.add('active');
+    }
+    item.dataset.gameId = definition.id;
+    const title = document.createElement('span');
+    title.className = 'game-option__title';
+    title.textContent = definition.name ?? definition.id;
+    const subtitle = document.createElement('small');
+    subtitle.className = 'game-option__subtitle';
+    subtitle.textContent = definition.description ?? '';
+    item.appendChild(title);
+    item.appendChild(subtitle);
+    item.addEventListener('click', () => {
+      closeGamesModal();
+      if (definition.id !== currentGameId) {
+        switchGame(definition.id);
+      }
+    });
+    gamesList.appendChild(item);
+  });
+}
+
+function updateActiveGameName() {
+  if (!activeGameNameEl) return;
+  activeGameNameEl.textContent = gameDefinition?.name ?? '';
+}
+
+function openGamesModal() {
+  if (!gamesModal) return;
+  buildGamesList();
+  gamesModal.classList.remove('hidden');
+  gamesModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeGamesModal() {
+  if (!gamesModal) return;
+  gamesModal.classList.add('hidden');
+  gamesModal.setAttribute('aria-hidden', 'true');
+}
+
+function isGamesModalHidden() {
+  return !gamesModal || gamesModal.classList.contains('hidden');
+}
+
+function resolveDefaultLevel(definition) {
+  if (!definition) return null;
+  const { defaultLevelId, levels } = definition;
+  if (!levels) return null;
+  if (defaultLevelId && levels[defaultLevelId]) {
+    return levels[defaultLevelId];
+  }
+  const [firstKey] = Object.keys(levels);
+  return firstKey ? levels[firstKey] : null;
+}
+
+function switchGame(gameId) {
+  if (!gameId || gameId === currentGameId) return;
+  const nextDefinition = getGameDefinition(gameId);
+  if (!nextDefinition) return;
+  game?.destroy?.();
+  currentGameId = gameId;
+  gameDefinition = nextDefinition;
+  currentLevels = nextDefinition.levels ?? {};
+  currentLevel = resolveDefaultLevel(nextDefinition);
+  if (trainerToggle) {
+    trainerToggle.checked = false;
+    trainerToggle.disabled = false;
+  }
+  game = createGameInstance(gameId, canvas, buildGameCallbacks());
+  if (game && currentLevel?.id) {
+    game.setLevel?.(currentLevel.id);
+  }
+  selectedCrashOption = 'random';
+  buildModeButtons(gameDefinition, currentLevel?.id);
+  renderCrashOptions(currentLevel, selectedCrashOption);
+  selectedCrashOption = crashSelect.value;
+  ensureAutopilotPreview(selectedCrashOption, currentLevel);
+  if (currentLevel?.id) {
+    applyTheme(currentLevel.id);
+    updateUIForLevel(currentLevel);
+  } else {
+    applyTheme('classic');
+  }
+  resetPostRoundUI();
+  awaitingCrashAfterCashout = false;
+  suppressCrashRoundEnd = false;
+  previousMultiplier = 1;
+  updateMultiplierDisplay(1, false);
+  updateActiveGameName();
+  buildGamesList();
+  game?.setTrainerMode?.(false);
+  trainerScript = null;
+  copyScriptButton?.classList?.add('hidden');
+  statusLabel.textContent = 'Idle';
+}
 function startRound() {
-  if (roundActive) return;
+  if (roundActive || !game) return;
   const crashIndex = resolveCrashIndex(currentLevel, selectedCrashOption);
-  if (crashIndex >= 0 && !game.isCrashIndexValid(crashIndex)) {
+  if (crashIndex >= 0 && !game.isCrashIndexValid?.(crashIndex)) {
     statusLabel.textContent = 'Invalid crash order.';
     return;
   }
 
   activeBet = BET_STEPS[betIndex];
   awaitingCrashAfterCashout = false;
-  if (!trainerToggle.checked) {
+  const trainerEnabled = Boolean(trainerToggle && trainerToggle.checked);
+  if (!trainerEnabled) {
     if (activeBet > balance) {
       statusLabel.textContent = 'Insufficient balance.';
       return;
@@ -235,23 +438,28 @@ function startRound() {
   }
 
   trainerScript = null;
-  copyScriptButton.classList.add('hidden');
-  debugMenu.classList.add('hidden');
+  copyScriptButton?.classList?.add('hidden');
+  debugMenu?.classList?.add('hidden');
   setPrimaryButton(BUTTON_STATES.RUNNING);
   roundActive = true;
   disableBetSpinner(true);
-  trainerToggle.disabled = true;
-  crashSelect.disabled = true;
+  if (trainerToggle) {
+    trainerToggle.disabled = true;
+  }
+  if (crashSelect) {
+    crashSelect.disabled = true;
+  }
   game.startRound({ crashIndex });
 }
 
 function handleCashOut() {
-  if (!roundActive || trainerToggle.checked) return;
-  const result = game.cashOut();
+  if (!roundActive || (trainerToggle && trainerToggle.checked) || !game) return;
+  const result = game.cashOut?.();
   if (!result) return;
 }
 
 function renderCrashOptions(level, preferredOption = 'random') {
+  if (!crashSelect) return;
   crashSelect.innerHTML = '';
   const points = Array.isArray(level?.crashPoints) ? level.crashPoints : [];
 
@@ -283,7 +491,7 @@ function ensureAutopilotPreview(option, level = currentLevel) {
   if (!level) return;
   const index = option === 'random' || option === 'instant' ? 0 : Number(option);
   if (Number.isInteger(index) && index >= 0) {
-    game.loadAutopilotScript(index);
+    game?.loadAutopilotScript?.(index);
   }
 }
 
@@ -507,7 +715,7 @@ function handleMultiplierUpdate(multiplier) {
 
 function handleTrainerScript(script) {
   trainerScript = script;
-  copyScriptButton.classList.remove('hidden');
+  copyScriptButton?.classList?.remove('hidden');
 }
 
 function handleTrainerToggle(enabled) {
@@ -523,14 +731,19 @@ function handleCrashFinalize(result) {
   suppressCrashRoundEnd = true;
   roundActive = false;
   disableBetSpinner(false);
-  trainerToggle.disabled = false;
-  crashSelect.disabled = false;
+  if (trainerToggle) {
+    trainerToggle.disabled = false;
+  }
+  if (crashSelect) {
+    crashSelect.disabled = false;
+  }
   primaryButton.disabled = false;
   previousMultiplier = 1;
   scheduleReset(1200, resetPostRoundUI);
 }
 
 function handleLevelChange(level) {
+  if (!level) return;
   currentLevel = level;
   applyTheme(level.id);
   updateUIForLevel(level);
@@ -544,7 +757,8 @@ function handleRoundEnd(result) {
     return;
   }
 
-  if (trainerToggle.checked) {
+  const trainerEnabled = Boolean(trainerToggle && trainerToggle.checked);
+  if (trainerEnabled) {
     resetPostRoundUI();
     scheduleReset();
     return;
@@ -571,8 +785,12 @@ function handleRoundEnd(result) {
   awaitingCrashAfterCashout = false;
   roundActive = false;
   disableBetSpinner(false);
-  trainerToggle.disabled = false;
-  crashSelect.disabled = false;
+  if (trainerToggle) {
+    trainerToggle.disabled = false;
+  }
+  if (crashSelect) {
+    crashSelect.disabled = false;
+  }
   previousMultiplier = 1;
   primaryButton.disabled = false;
 
@@ -595,8 +813,10 @@ function handleRoundEnd(result) {
 
 function scheduleReset(delay = 600, afterReset) {
   setTimeout(() => {
-    game.resetRound();
-    if (typeof afterReset === "function") {
+    if (game?.resetRound) {
+      game.resetRound();
+    }
+    if (typeof afterReset === 'function') {
       afterReset();
     }
   }, delay);
@@ -612,6 +832,10 @@ function toggleTrainerUI(enabled) {
 }
 
 function updateUIForLevel(level) {
+  if (!level) {
+    document.body.dataset.levelTheme = '';
+    return;
+  }
   document.body.dataset.levelTheme = level.id;
   modeButtons.forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.level === level.id);
