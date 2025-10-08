@@ -251,8 +251,13 @@ export class KnivesGame {
       knife.progress += dt / knife.duration;
       knife.progress = Math.min(knife.progress, 1);
       const t = easeInOut(knife.progress);
-      knife.x = lerp(knife.startX, knife.targetX, t);
-      knife.y = lerp(knife.startY, knife.targetY, t);
+      const impactAngle = normalizeAngle(this.wheel.angle);
+      const { x: targetX, y: targetY } = this.getImpactPoint(impactAngle);
+      knife.targetAngle = impactAngle;
+      knife.targetX = targetX;
+      knife.targetY = targetY;
+      knife.x = lerp(knife.startX, targetX, t);
+      knife.y = lerp(knife.startY, targetY, t);
       if (knife.progress >= 1 && !knife.resolved) {
         impactKnives.push(knife);
       }
@@ -264,10 +269,13 @@ export class KnivesGame {
 
   resolveImpact(knife) {
     knife.resolved = true;
-    const impactAngle = normalizeAngle(this.wheel.angle);
+    const impactAngle = normalizeAngle(knife.targetAngle ?? this.wheel.angle);
     const relativeAngle = normalizeAngle(-impactAngle);
+    knife.x = knife.targetX ?? knife.x;
+    knife.y = knife.targetY ?? knife.y;
     const collision = this.stuckKnives.some((existing) => {
-      const delta = Math.abs(normalizeAngle(existing.offset - relativeAngle));
+      const existingAngle = existing.relativeAngle ?? 0;
+      const delta = Math.abs(normalizeAngle(existingAngle - relativeAngle));
       return delta < COLLISION_THRESHOLD;
     });
 
@@ -281,7 +289,7 @@ export class KnivesGame {
     }
 
     this.stuckKnives.push({
-      offset: relativeAngle,
+      relativeAngle,
     });
     this.successfulHits += 1;
     const nextMultiplier =
@@ -334,10 +342,11 @@ export class KnivesGame {
       resolved: false,
       startX: centerX,
       startY: throwOriginY,
-      targetX: centerX,
-      targetY: centerY - wheelRadius,
       x: centerX,
       y: throwOriginY,
+      targetX: centerX,
+      targetY: centerY - wheelRadius,
+      targetAngle: this.wheel.angle,
     };
 
     this.projectiles.push(projectile);
@@ -408,13 +417,16 @@ export class KnivesGame {
   }
 
   drawStuckKnives(ctx, x, y) {
+    const { wheelRadius } = this.layout;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(this.wheel.angle);
     this.stuckKnives.forEach((knife) => {
+      const relative = knife.relativeAngle ?? knife.offset ?? 0;
+      const worldAngle = normalizeAngle(this.wheel.angle + relative);
       ctx.save();
-      ctx.rotate(knife.offset);
-      ctx.translate(0, -this.layout.wheelRadius);
+      ctx.rotate(worldAngle);
+      ctx.translate(0, wheelRadius);
+      ctx.rotate(Math.PI);
       this.renderKnife(ctx, this.renderKnifeLength * 0.9, this.renderKnifeWidth, 1);
       ctx.restore();
     });
@@ -422,7 +434,10 @@ export class KnivesGame {
   }
 
   drawProjectiles(ctx) {
-    this.drawReadyKnife(ctx);
+    const hasActive = this.projectiles.some((knife) => !knife.resolved);
+    if (!hasActive) {
+      this.drawReadyKnife(ctx);
+    }
 
     this.projectiles.forEach((knife) => {
       if (knife.resolved && knife.progress >= 1) return;
@@ -438,8 +453,16 @@ export class KnivesGame {
     const originY = this.layout.throwOriginY;
     ctx.save();
     ctx.translate(this.layout.centerX, originY);
+    ctx.rotate(Math.PI);
     this.renderKnife(ctx, this.renderKnifeLength, this.renderKnifeWidth, 1);
     ctx.restore();
+  }
+
+  getImpactPoint(angle) {
+    const { centerX, centerY, wheelRadius } = this.layout;
+    const x = centerX - Math.sin(angle) * wheelRadius;
+    const y = centerY + Math.cos(angle) * wheelRadius;
+    return { x, y };
   }
 
   renderKnife(ctx, length, width, opacity = 1) {
