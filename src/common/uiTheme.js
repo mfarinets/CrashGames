@@ -1,7 +1,7 @@
 export const UI_THEME = {
   multiplier: {
-    centerFontSize: 34,
-    centerColor: '#111827',
+    centerFontSize: 52,
+    centerColor: '#ffffffff',
     pipeLabelBaseColor: '#ffffff',
     pipeLabelPassedColor: '#facc15',
   },

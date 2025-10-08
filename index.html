@@ -15,10 +15,7 @@
       <div class="hud">
         <div class="top-row">
           <div class="mode-switch" id="mode-switch"></div>
-          <div class="game-menu">
-            <span id="active-game-name" class="game-name">Crash Flight</span>
-            <button id="more-button" class="chip">More games</button>
-          </div>
+          <button id="more-button" class="chip">Lobby</button>
         </div>
         <div class="multiplier-strip" id="multiplier-container">
           <span class="label">Multiplier</span>
@@ -29,7 +26,7 @@
           <div class="debug-content">
             <div class="debug-header">
               <h3>Developer Tools</h3>
-              <button id="close-debug" class="chip ghost">Close</button>
+              <button id="close-debug" class="chip ghost chip-icon">X</button>
             </div>
             <div class="debug-grid">
               <label class="debug-field">
@@ -100,11 +97,8 @@
       <div class="games-modal__content">
         <header class="games-modal__header">
           <h2>More Games</h2>
-          <button id="games-close-button" class="chip ghost">Close</button>
+          <button id="games-close-button" class="chip ghost chip-icon">X</button>
         </header>
-        <p class="games-modal__hint">
-          Choose another game to load with the shared Crash UI.
-        </p>
         <div id="games-list" class="games-list"></div>
       </div>
     </div>

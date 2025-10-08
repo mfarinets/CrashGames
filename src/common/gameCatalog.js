@@ -13,6 +13,7 @@ export const GAME_REGISTRY = {
     defaultLevelId: 'medium',
     modeOrder: ['medium', 'devil'],
     tags: ['featured'],
+    thumbnail: 'assets/birds/classic.png',
   },
   knives: {
     id: 'knives',
@@ -23,6 +24,7 @@ export const GAME_REGISTRY = {
     defaultLevelId: 'arena',
     modeOrder: ['arena', 'gauntlet'],
     tags: ['coming soon'],
+    thumbnail: 'assets/birds/high-volatility.png',
   },
 };
 

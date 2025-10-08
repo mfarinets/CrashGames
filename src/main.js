@@ -21,7 +21,6 @@ const gamesModal = document.getElementById('games-modal');
 const gamesOverlay = document.getElementById('games-overlay');
 const gamesCloseButton = document.getElementById('games-close-button');
 const gamesList = document.getElementById('games-list');
-const activeGameNameEl = document.getElementById('active-game-name');
 const debugMenu = document.getElementById('debug-menu');
 const closeDebug = document.getElementById('close-debug');
 const primaryButton = document.getElementById('primary-button');
@@ -138,7 +137,6 @@ function init() {
   updateMultiplierDisplay(1, false);
   setPrimaryButton(BUTTON_STATES.READY);
   ensureAutopilotPreview(selectedCrashOption, currentLevel);
-  updateActiveGameName();
   attachEventListeners();
 }
 
@@ -326,14 +324,23 @@ function buildGamesList() {
       item.classList.add('active');
     }
     item.dataset.gameId = definition.id;
-    const title = document.createElement('span');
-    title.className = 'game-option__title';
-    title.textContent = definition.name ?? definition.id;
-    const subtitle = document.createElement('small');
-    subtitle.className = 'game-option__subtitle';
-    subtitle.textContent = definition.description ?? '';
-    item.appendChild(title);
-    item.appendChild(subtitle);
+    const thumb = document.createElement('div');
+    thumb.className = 'game-option__thumb';
+    if (definition.thumbnail) {
+      thumb.classList.add('with-image');
+      thumb.style.setProperty('background-image', `url("${definition.thumbnail}")`);
+    } else {
+      const initial =
+        (definition.name && definition.name[0]) ||
+        (definition.id && definition.id[0]) ||
+        '?';
+      thumb.textContent = initial.toUpperCase();
+    }
+    const label = document.createElement('span');
+    label.className = 'game-option__label';
+    label.textContent = definition.name ?? definition.id;
+    item.appendChild(thumb);
+    item.appendChild(label);
     item.addEventListener('click', () => {
       closeGamesModal();
       if (definition.id !== currentGameId) {
@@ -342,11 +349,6 @@ function buildGamesList() {
     });
     gamesList.appendChild(item);
   });
-}
-
-function updateActiveGameName() {
-  if (!activeGameNameEl) return;
-  activeGameNameEl.textContent = gameDefinition?.name ?? '';
 }
 
 function openGamesModal() {
@@ -410,7 +412,6 @@ function switchGame(gameId) {
   suppressCrashRoundEnd = false;
   previousMultiplier = 1;
   updateMultiplierDisplay(1, false);
-  updateActiveGameName();
   buildGamesList();
   game?.setTrainerMode?.(false);
   trainerScript = null;
