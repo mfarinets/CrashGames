@@ -754,7 +754,7 @@ function resolveAutopilotScript(level, crashIndex) {
 }
 
 function buildClouds() {
-  return Array.from({ length: 6 }, (_, index) => ({
+  return Array.from({ length: 3 }, (_, index) => ({
     id: index,
     x: Math.random() * VIRTUAL_WIDTH,
     y: 70 + Math.random() * 200,

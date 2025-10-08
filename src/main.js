@@ -257,20 +257,32 @@ function disablePinchZoom() {
   const preventGesture = (event) => {
     event.preventDefault();
   };
-  const preventMultiTouch = (event) => {
-    if (event.touches && event.touches.length > 1) {
+  const preventScroll = (event) => {
+    event.preventDefault();
+  };
+  let lastTouchTime = 0;
+  const preventDoubleTap = (event) => {
+    const now = event.timeStamp || Date.now();
+    if (now - lastTouchTime < 300) {
       event.preventDefault();
     }
+    lastTouchTime = now;
   };
   const gestures = ['gesturestart', 'gesturechange', 'gestureend'];
   gestures.forEach((type) => {
     document.addEventListener(type, preventGesture, { passive: false });
     pinchGestureHandlers.push({ type, listener: preventGesture, options: { passive: false } });
   });
-  document.addEventListener('touchmove', preventMultiTouch, { passive: false });
+  document.addEventListener('touchmove', preventScroll, { passive: false });
   pinchGestureHandlers.push({
     type: 'touchmove',
-    listener: preventMultiTouch,
+    listener: preventScroll,
+    options: { passive: false },
+  });
+  document.addEventListener('touchend', preventDoubleTap, { passive: false });
+  pinchGestureHandlers.push({
+    type: 'touchend',
+    listener: preventDoubleTap,
     options: { passive: false },
   });
 }
