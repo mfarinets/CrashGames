@@ -3,15 +3,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: #060716;
   color: #f9fafb;
   min-height: 100vh;
+  height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 :root {
@@ -30,6 +37,7 @@ body {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -506,7 +514,7 @@ body[data-level-theme='devil'] {
 body[data-level-theme='devil'] .mode-switch {
   border-color: rgba(248, 113, 113, 0.3);
 }
-
+/*
 @media (max-width: 520px) {
   .hud {
     padding: 16px 14px 20px;
@@ -522,5 +530,5 @@ body[data-level-theme='devil'] .mode-switch {
 
   .primary-action-area {
     margin-bottom: 20px;
-  }
+  } */
 }
