@@ -56,8 +56,8 @@ export const BIRD_SPRITES = {
 };
 
 export const COLORS = {
-  skyTop: '#38bdf8',
-  skyBottom: '#0f172a',
+  skyTop: '#8fd6f5ff',
+  skyBottom: '#2999e9ff',
   cloud: 'rgba(255,255,255,0.25)',
   pipeTop: '#16a34a',
   pipeBottom: '#15803d',

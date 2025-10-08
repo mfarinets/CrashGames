@@ -658,7 +658,7 @@ function drawPipes(ctx, pipes, level, spriteManager) {
       ctx.fill();
     }
 
-    const labelY = Math.max(gapTop - 12, 28);
+    const labelY = Math.max(gapTop - 30, 28);
     const scale = 1 + 0.28 * highlightProgress;
     ctx.save();
     ctx.translate(pipe.x + PIPE.width / 2, labelY);

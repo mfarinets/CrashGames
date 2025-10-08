@@ -6,6 +6,7 @@ import {
 } from './common/gameCatalog.js';
 import { UI_THEME } from './common/uiTheme.js';
 
+const appContainer = document.getElementById('app');
 const canvas = document.getElementById('game-canvas');
 const balanceDisplay = document.getElementById('balance-display');
 const balanceMeta = balanceDisplay ? balanceDisplay.closest('.meta') : null;
@@ -113,6 +114,7 @@ let awaitingCrashAfterCashout = false;
 let crashHighlightTimer = null;
 let suppressCrashRoundEnd = false;
 let game = null;
+let screenShakeTimer = null;
 
 init();
 
@@ -595,6 +597,7 @@ function triggerCrashHighlight(multiplier) {
     currentMultiplierEl.style.color = UI_THEME.multiplier.centerColor;
     crashHighlightTimer = null;
   }, highlightDuration);
+  triggerScreenShake();
 }
 
 function updateBetDisplay() {
@@ -610,6 +613,20 @@ function updateBetDisplay() {
   if (buttonState === BUTTON_STATES.READY) {
     ctaSubtext.textContent = formatCurrency(betValue);
   }
+}
+
+function triggerScreenShake(duration = 500) {
+  if (!appContainer) return;
+  appContainer.classList.remove('screen-shake');
+  void appContainer.offsetWidth;
+  appContainer.classList.add('screen-shake');
+  if (screenShakeTimer) {
+    clearTimeout(screenShakeTimer);
+  }
+  screenShakeTimer = setTimeout(() => {
+    appContainer.classList.remove('screen-shake');
+    screenShakeTimer = null;
+  }, duration);
 }
 
 function updateBalanceDisplay() {
@@ -850,11 +867,14 @@ function handleRoundEnd(result) {
     winResetTimer = setTimeout(() => {
       resetPostRoundUI();
     }, 3000);
-  } else {
-    resetPostRoundUI();
+    scheduleReset();
+    return;
   }
 
-  scheduleReset();
+  const crashMultiplier = result.multiplier || 0;
+  triggerCrashHighlight(crashMultiplier);
+  const crashDelay = 700;
+  scheduleReset(crashDelay, resetPostRoundUI);
 }
 
 function scheduleReset(delay = 600, afterReset) {
