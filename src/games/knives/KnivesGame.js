@@ -65,7 +65,8 @@ export class KnivesGame {
       centerX: this.viewportWidth / 2,
       centerY: this.viewportHeight * 0.45,
       wheelRadius: WHEEL_RADIUS,
-      throwStartY: this.viewportHeight * 0.86,
+      throwOriginY: this.viewportHeight * 0.86,
+      knifeGap: 60,
     };
     this.scaleRatio = 1;
     this.renderKnifeLength = KNIFE_LENGTH;
@@ -323,7 +324,7 @@ export class KnivesGame {
     }
     this.lastThrowAt = this.elapsed;
 
-    const { centerX, centerY, wheelRadius, throwStartY } = this.layout;
+    const { centerX, centerY, wheelRadius, throwOriginY } = this.layout;
 
     const projectile = {
       state: 'flying',
@@ -332,11 +333,11 @@ export class KnivesGame {
       progress: 0,
       resolved: false,
       startX: centerX,
-      startY: throwStartY,
+      startY: throwOriginY,
       targetX: centerX,
       targetY: centerY - wheelRadius,
       x: centerX,
-      y: throwStartY,
+      y: throwOriginY,
     };
 
     this.projectiles.push(projectile);
@@ -414,23 +415,60 @@ export class KnivesGame {
       ctx.save();
       ctx.rotate(knife.offset);
       ctx.translate(0, -this.layout.wheelRadius);
-      this.renderKnifeShape(ctx, this.renderKnifeLength * 0.9, this.renderKnifeWidth, 1);
+      this.renderKnife(ctx, this.renderKnifeLength * 0.9, this.renderKnifeWidth, 1);
       ctx.restore();
     });
     ctx.restore();
   }
 
   drawProjectiles(ctx) {
+    this.drawReadyKnife(ctx);
+
     this.projectiles.forEach((knife) => {
       if (knife.resolved && knife.progress >= 1) return;
       ctx.save();
       ctx.translate(knife.x, knife.y);
-      this.renderKnifeShape(ctx, this.renderKnifeLength, this.renderKnifeWidth, 0.8);
+      this.renderKnife(ctx, this.renderKnifeLength, this.renderKnifeWidth, 0.8);
       ctx.restore();
     });
   }
 
-  renderKnifeShape(ctx, length, width, opacity = 1) {
+  drawReadyKnife(ctx) {
+    if (!this.layout?.throwOriginY) return;
+    const originY = this.layout.throwOriginY;
+    ctx.save();
+    ctx.translate(this.layout.centerX, originY);
+    this.renderKnife(ctx, this.renderKnifeLength, this.renderKnifeWidth, 1);
+    ctx.restore();
+  }
+
+  renderKnife(ctx, length, width, opacity = 1) {
+    const knifeAsset = this.level?.assets?.knife;
+    if (knifeAsset) {
+      if (knifeAsset.loaded && knifeAsset.image) {
+        const { image } = knifeAsset;
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.drawImage(image, -width / 2, -length, width, length);
+        ctx.restore();
+        return;
+      }
+      if (!knifeAsset.requested && typeof knifeAsset.src === 'string') {
+        knifeAsset.requested = true;
+        const img = new Image();
+        img.onload = () => {
+          knifeAsset.image = img;
+          knifeAsset.loaded = true;
+          knifeAsset.requested = false;
+        };
+        img.onerror = () => {
+          knifeAsset.loaded = false;
+          knifeAsset.requested = false;
+        };
+        img.src = knifeAsset.src;
+        knifeAsset.image = img;
+      }
+    }
     ctx.fillStyle = `rgba(232, 240, 255, ${opacity})`;
     ctx.beginPath();
     ctx.moveTo(-width / 2, 0);
@@ -482,9 +520,11 @@ export class KnivesGame {
     const wheelRadius = Math.max(80, minDim * (portrait ? 0.2 : 0.15));
     const baseCenterY = portrait ? height * 0.23 : height * 0.5;
     const centerY = Math.max(wheelRadius + 80, baseCenterY);
-    const throwStartY = Math.min(
+    const defaultGap = Math.max(60, height * 0.08);
+    const knifeGap = this.level?.assets?.knifeGap ?? defaultGap;
+    const throwOriginY = Math.min(
       height - 80,
-      centerY + wheelRadius + Math.max(60, height * 0.08)
+      centerY + wheelRadius + knifeGap
     );
 
     this.viewportWidth = width;
@@ -495,14 +535,15 @@ export class KnivesGame {
       centerX: width / 2,
       centerY,
       wheelRadius,
-      throwStartY,
+      throwOriginY,
+      knifeGap,
     };
 
     this.scaleRatio = wheelRadius / WHEEL_RADIUS;
     this.renderKnifeLength = KNIFE_LENGTH * this.scaleRatio;
     this.renderKnifeWidth = Math.max(8, KNIFE_WIDTH * this.scaleRatio);
 
-    const layoutThrowStartY = this.layout.throwStartY;
+    const layoutThrowStartY = this.layout.throwOriginY;
     this.projectiles.forEach((knife) => {
       knife.startX = this.layout.centerX;
       knife.startY = layoutThrowStartY;

@@ -9,6 +9,7 @@ export const LEVELS = {
     assets: {
       background: '#1d1f2a',
       knifeColor: '#f24c4c',
+      knifeGap: 300,
     },
   },
   gauntlet: {
@@ -21,6 +22,7 @@ export const LEVELS = {
     assets: {
       background: '#221426',
       knifeColor: '#d74efc',
+      knifeGap: 300,
     },
   },
 };
