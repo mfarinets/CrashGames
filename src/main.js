@@ -92,6 +92,9 @@ let winResetTimer = null;
 let previousMultiplier = 1;
 let multiplierPulseTimer = null;
 let activeModeTheme = UI_THEME.modes.classic;
+let awaitingCrashAfterCashout = false;
+let crashHighlightTimer = null;
+
 
 const game = new Game(canvas, {
   onStatus: handleStatusUpdate,
@@ -209,6 +212,7 @@ function startRound() {
   }
 
   activeBet = BET_STEPS[betIndex];
+  awaitingCrashAfterCashout = false;
   if (!trainerToggle.checked) {
     if (activeBet > balance) {
       statusLabel.textContent = 'Insufficient balance.';
@@ -255,6 +259,24 @@ function renderCrashOptions(level, preferredIndex = 0) {
   crashSelect.value = String(clampIndex);
 }
 
+function triggerCrashHighlight(multiplier) {
+  if (crashHighlightTimer) {
+    clearTimeout(crashHighlightTimer);
+  }
+  const highlightDuration = 400;
+  currentMultiplierEl.textContent = `×${multiplier.toFixed(2)}`;
+  currentMultiplierEl.style.color = UI_THEME.multiplier.pipeLabelPassedColor;
+  multiplierContainer.classList.remove('pulse');
+  void multiplierContainer.offsetWidth;
+  multiplierContainer.classList.add('pulse');
+  currentMultiplierEl.style.color = UI_THEME.multiplier.pipeLabelPassedColor;
+  crashHighlightTimer = setTimeout(() => {
+    multiplierContainer.classList.remove('pulse');
+    currentMultiplierEl.style.color = UI_THEME.multiplier.centerColor;
+    crashHighlightTimer = null;
+  }, highlightDuration);
+}
+
 function updateBetDisplay() {
   const betValue = BET_STEPS[betIndex];
   betAmountEl.textContent = formatCurrency(betValue);
@@ -291,12 +313,14 @@ function updateMultiplierDisplay(value, animate = true) {
   multiplierContainer.classList.remove('pulse');
   void multiplierContainer.offsetWidth;
   multiplierContainer.classList.add('pulse');
+  currentMultiplierEl.style.color = UI_THEME.multiplier.pipeLabelPassedColor;
   if (multiplierPulseTimer) {
     clearTimeout(multiplierPulseTimer);
   }
   multiplierPulseTimer = setTimeout(() => {
     multiplierContainer.classList.remove('pulse');
-  }, 260);
+    currentMultiplierEl.style.color = UI_THEME.multiplier.centerColor;
+  }, 400);
 }
 
 function setPrimaryButton(state, opts = {}) {
@@ -390,6 +414,9 @@ function resetPostRoundUI() {
   crashSelect.disabled = false;
   updateMultiplierDisplay(1, false);
   previousMultiplier = 1;
+  primaryButton.disabled = false;
+  awaitingCrashAfterCashout = false;
+  disableBetSpinner(false);
 }
 
 function handleStatusUpdate(status) {
@@ -421,11 +448,7 @@ function handleLevelChange(level) {
 }
 
 function handleRoundEnd(result) {
-  roundActive = false;
-  disableBetSpinner(false);
-  trainerToggle.disabled = false;
-  crashSelect.disabled = false;
-  previousMultiplier = 1;
+  if (!result) return;
 
   if (trainerToggle.checked) {
     resetPostRoundUI();
@@ -433,7 +456,34 @@ function handleRoundEnd(result) {
     return;
   }
 
-  if (result && (result.status === 'cashed_out' || result.status === 'cleared')) {
+  if (result.status === 'cashed_out') {
+    awaitingCrashAfterCashout = true;
+    roundActive = true;
+    disableBetSpinner(true);
+    trainerToggle.disabled = true;
+    crashSelect.disabled = true;
+    primaryButton.disabled = true;
+    const multiplier = result.multiplier || 1;
+    previousMultiplier = multiplier;
+    if (!trainerToggle.checked) {
+      const payout = Number((activeBet * multiplier).toFixed(2));
+      balance += payout;
+      lastWinAmount = payout;
+      updateBalanceDisplay();
+      setPrimaryButton(BUTTON_STATES.WIN, { amount: payout });
+    }
+    return;
+  }
+
+  awaitingCrashAfterCashout = false;
+  roundActive = false;
+  disableBetSpinner(false);
+  trainerToggle.disabled = false;
+  crashSelect.disabled = false;
+  previousMultiplier = 1;
+  primaryButton.disabled = false;
+
+  if (result.status === 'cleared') {
     const multiplier = result.multiplier || 1;
     const payout = Number((activeBet * multiplier).toFixed(2));
     balance += payout;
@@ -444,7 +494,7 @@ function handleRoundEnd(result) {
       resetPostRoundUI();
     }, 3000);
   } else {
-    setPrimaryButton(BUTTON_STATES.READY);
+    resetPostRoundUI();
   }
 
   scheduleReset();
@@ -475,3 +525,4 @@ function updateUIForLevel(level) {
 function formatCurrency(value) {
   return `$${Number(value).toFixed(2)}`;
 }
+
