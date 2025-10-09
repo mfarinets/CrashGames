@@ -61,9 +61,9 @@ export const COLORS = {
     skyBottom: '#2999e9ff',
     cloud: 'rgba(255,255,255,0.25)',
     pipeTop: '#16a34a',
-    pipeBottom: '#15803d',
+    pipeBottom: '#90e1aeff',
     lava: '#ef4444',
-    grass: '#22c55e',
+    grass: '#140131ff',
     hudAccent: '#38bdf8',
   },
   devil: {
