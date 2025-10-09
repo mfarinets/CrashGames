@@ -26,6 +26,7 @@ export class Game {
     this.virtualScale = 1;
 
     this.level = LEVELS.medium;
+    this.colors = resolveColorScheme(this.level);
     this.roundState = 'idle';
     this.currentMultiplier = 1.0;
     this.forcedCrashPipeId = null;
@@ -95,6 +96,7 @@ export class Game {
     const level = LEVELS[levelId];
     if (!level) return;
     this.level = level;
+    this.colors = resolveColorScheme(level);
     this.loadBirdSprite(levelId);
     this.crashIndex = 0;
     this.crashPoint = level.crashPoints[0] ?? null;
@@ -523,11 +525,11 @@ export class Game {
     const ctx = this.ctx;
     ctx.save();
     ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-    drawBackground(ctx, this.level);
-    drawClouds(ctx, this.parallaxClouds);
-    drawPipes(ctx, this.pipes, this.level, this.pipeSpriteManager);
+    drawBackground(ctx, this.colors);
+    drawClouds(ctx, this.parallaxClouds, this.colors);
+    drawPipes(ctx, this.pipes, this.level, this.pipeSpriteManager, this.colors);
     drawBird(ctx, this.bird, this.birdSpriteCache[this.level.id]);
-    drawGround(ctx, this.level);
+    drawGround(ctx, this.level, this.colors);
     if (this.roundState === 'crashed') {
       drawCrashOverlay(ctx);
     }
@@ -570,16 +572,16 @@ function rectanglesOverlap(
   return ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1;
 }
 
-function drawBackground(ctx, level) {
+function drawBackground(ctx, colors) {
   const gradient = ctx.createLinearGradient(0, 0, 0, VIRTUAL_HEIGHT);
-  gradient.addColorStop(0, COLORS.skyTop);
-  gradient.addColorStop(1, COLORS.skyBottom);
+  gradient.addColorStop(0, colors.skyTop);
+  gradient.addColorStop(1, colors.skyBottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 }
 
-function drawClouds(ctx, clouds) {
-  ctx.fillStyle = COLORS.cloud;
+function drawClouds(ctx, clouds, colors) {
+  ctx.fillStyle = colors.cloud;
   for (const cloud of clouds) {
     drawRoundedRectPath(
       ctx,
@@ -593,7 +595,7 @@ function drawClouds(ctx, clouds) {
   }
 }
 
-function drawPipes(ctx, pipes, level, spriteManager) {
+function drawPipes(ctx, pipes, level, spriteManager, colors) {
   ctx.strokeStyle = 'rgba(15,23,42,0.35)';
   ctx.lineWidth = 2;
   ctx.textAlign = 'center';
@@ -601,9 +603,9 @@ function drawPipes(ctx, pipes, level, spriteManager) {
   ctx.font = '600 18px "Inter", sans-serif';
 
   const pipeTopColorBase =
-    level.groundTheme === 'lava' ? '#f97316' : COLORS.pipeTop;
+    level.groundTheme === 'lava' ? '#f97316' : colors.pipeTop;
   const pipeBottomColorBase =
-    level.groundTheme === 'lava' ? '#ea580c' : COLORS.pipeBottom;
+    level.groundTheme === 'lava' ? '#ea580c' : colors.pipeBottom;
   const pipeTopPassed = level.groundTheme === 'lava' ? '#fb923c' : '#4ade80';
   const pipeBottomPassed = level.groundTheme === 'lava' ? '#f97316' : '#22c55e';
   const pipeLabelBaseColor = UI_THEME.multiplier.pipeLabelBaseColor;
@@ -708,14 +710,22 @@ function drawBird(ctx, bird, spriteEntry) {
   ctx.restore();
 }
 
-function drawGround(ctx, level) {
+function drawGround(ctx, level, colors) {
   const groundTop = VIRTUAL_HEIGHT - WORLD.groundHeight;
   ctx.fillStyle =
-    level.groundTheme === 'lava' ? COLORS.lava : COLORS.grass;
+    level.groundTheme === 'lava' ? colors.lava : colors.grass;
   ctx.fillRect(0, groundTop, VIRTUAL_WIDTH, WORLD.groundHeight);
   ctx.fillStyle =
     level.groundTheme === 'lava' ? '#b91c1c' : '#166534';
   ctx.fillRect(0, groundTop, VIRTUAL_WIDTH, 16);
+}
+
+function resolveColorScheme(level) {
+  const key = level?.id;
+  if (key && COLORS[key]) {
+    return COLORS[key];
+  }
+  return COLORS.classic;
 }
 
 function drawCrashOverlay(ctx) {

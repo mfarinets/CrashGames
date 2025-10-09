@@ -5,7 +5,7 @@ export const WORLD = {
   gravity: 1400,
   flapVelocity: -420,
   maxFallSpeed: 720,
-  scrollSpeed: 180,
+  scrollSpeed: 200,
   birdX: 96,
   groundHeight: 96,
 };
@@ -56,12 +56,24 @@ export const BIRD_SPRITES = {
 };
 
 export const COLORS = {
-  skyTop: '#8fd6f5ff',
-  skyBottom: '#2999e9ff',
-  cloud: 'rgba(255,255,255,0.25)',
-  pipeTop: '#16a34a',
-  pipeBottom: '#15803d',
-  lava: '#ef4444',
-  grass: '#22c55e',
-  hudAccent: '#38bdf8',
+  classic: {
+    skyTop: '#8fd6f5ff',
+    skyBottom: '#2999e9ff',
+    cloud: 'rgba(255,255,255,0.25)',
+    pipeTop: '#16a34a',
+    pipeBottom: '#15803d',
+    lava: '#ef4444',
+    grass: '#22c55e',
+    hudAccent: '#38bdf8',
+  },
+  devil: {
+    skyTop: '#a8a6d6ff',
+    skyBottom: '#7f7e91ff',
+    cloud: 'rgba(209, 213, 219, 0.18)',
+    pipeTop: '#64748b',
+    pipeBottom: '#475569',
+    lava: '#ef4444',
+    grass: '#334155',
+    hudAccent: '#38bdf8',
+  },
 };
