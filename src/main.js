@@ -258,6 +258,9 @@ function attachEventListeners() {
   if (primaryButton) {
     primaryButton.addEventListener('click', () => {
       if (buttonState === BUTTON_STATES.READY) {
+        if (!trainerModeActive()) {
+          playImpact();
+        }
         startRound();
         return;
       }
