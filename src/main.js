@@ -45,6 +45,8 @@ const currentMultiplierEl = document.getElementById('current-multiplier');
 const root = document.documentElement;
 const pinchGestureHandlers = [];
 const fpsDisplay = document.getElementById('fps-display');
+const searchParams = new URLSearchParams(window.location.search);
+const DEV_TOOLS_ENABLED = searchParams.has('debug');
 let fpsFrameCount = 0;
 let fpsLastTime = performance.now();
 let fpsMonitorHandle = null;
@@ -203,37 +205,48 @@ function attachEventListeners() {
   }
 
   if (balanceMeta) {
-    balanceMeta.classList.add('meta-interactive');
-    balanceMeta.addEventListener('click', () => {
-      debugMenu.classList.toggle('hidden');
-    });
+    balanceMeta.classList.toggle('meta-interactive', DEV_TOOLS_ENABLED);
+    if (DEV_TOOLS_ENABLED) {
+      balanceMeta.addEventListener('click', () => {
+        debugMenu.classList.toggle('hidden');
+      });
+    }
   }
 
   if (moreButton) {
-    moreButton.addEventListener('click', () => {
-      openGamesModal();
-    });
+    if (DEV_TOOLS_ENABLED) {
+      moreButton.addEventListener('click', () => {
+        openGamesModal();
+      });
+    } else {
+      moreButton.classList.add('hidden');
+      moreButton.setAttribute('tabindex', '-1');
+      moreButton.setAttribute('aria-hidden', 'true');
+      moreButton.disabled = true;
+    }
   }
 
-  if (gamesOverlay) {
+  if (DEV_TOOLS_ENABLED && gamesOverlay) {
     gamesOverlay.addEventListener('click', () => {
       closeGamesModal();
     });
   }
 
-  if (gamesCloseButton) {
+  if (DEV_TOOLS_ENABLED && gamesCloseButton) {
     gamesCloseButton.addEventListener('click', () => {
       closeGamesModal();
     });
   }
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !isGamesModalHidden()) {
-      closeGamesModal();
-    }
-  });
+  if (DEV_TOOLS_ENABLED) {
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !isGamesModalHidden()) {
+        closeGamesModal();
+      }
+    });
+  }
 
-  if (closeDebug) {
+  if (closeDebug && DEV_TOOLS_ENABLED) {
     closeDebug.addEventListener('click', () => {
       debugMenu.classList.add('hidden');
     });
@@ -443,14 +456,14 @@ function buildGamesList() {
 }
 
 function openGamesModal() {
-  if (!gamesModal) return;
+  if (!DEV_TOOLS_ENABLED || !gamesModal) return;
   buildGamesList();
   gamesModal.classList.remove('hidden');
   gamesModal.setAttribute('aria-hidden', 'false');
 }
 
 function closeGamesModal() {
-  if (!gamesModal) return;
+  if (!DEV_TOOLS_ENABLED || !gamesModal) return;
   gamesModal.classList.add('hidden');
   gamesModal.setAttribute('aria-hidden', 'true');
 }

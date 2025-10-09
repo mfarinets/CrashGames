@@ -29,7 +29,7 @@ export const UI_THEME = {
   multiplier: {
     centerFontSize: 52,
     centerColor: '#ffffffff',
-    pipeLabelBaseColor: '#ffffff',
+    pipeLabelBaseColor: '#ebebebff',
     pipeLabelPassedColor: '#de4458ff',
   },
   modes: {
