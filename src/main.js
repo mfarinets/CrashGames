@@ -5,6 +5,12 @@ import {
   getGameDefinition,
 } from './common/gameCatalog.js';
 import { UI_THEME } from './common/uiTheme.js';
+import {
+  prepareHaptics,
+  playImpact,
+  playConfirm,
+  playError,
+} from './common/haptics.js';
 
 const appContainer = document.getElementById('app');
 const canvas = document.getElementById('game-canvas');
@@ -118,6 +124,14 @@ let crashHighlightTimer = null;
 let suppressCrashRoundEnd = false;
 let game = null;
 let screenShakeTimer = null;
+
+function trainerModeActive() {
+  return Boolean(trainerToggle && trainerToggle.checked);
+}
+
+function shouldPlayRoundHaptics() {
+  return roundActive && !awaitingCrashAfterCashout && !trainerModeActive();
+}
 
 init();
 
@@ -524,6 +538,7 @@ function startRound() {
   if (crashSelect) {
     crashSelect.disabled = true;
   }
+  void prepareHaptics();
   game.startRound({ crashIndex });
 }
 
@@ -806,6 +821,9 @@ function handleMultiplierUpdate(multiplier) {
   multiplierLabel.textContent = `×${shown.toFixed(2)}`;
   const animate = shown > previousMultiplier + 0.001;
   updateMultiplierDisplay(shown, animate);
+  if (animate && shouldPlayRoundHaptics()) {
+    playImpact();
+  }
   previousMultiplier = shown;
   updatePayoutPreview(shown);
 }
@@ -854,6 +872,7 @@ function handleRoundEnd(result) {
     return;
   }
 
+  const allowHaptics = shouldPlayRoundHaptics();
   const trainerEnabled = Boolean(trainerToggle && trainerToggle.checked);
   if (trainerEnabled) {
     resetPostRoundUI();
@@ -862,6 +881,9 @@ function handleRoundEnd(result) {
   }
 
   if (result.status === 'cashed_out') {
+    if (allowHaptics) {
+      playConfirm();
+    }
     awaitingCrashAfterCashout = true;
     roundActive = true;
     disableBetSpinner(true);
@@ -906,6 +928,9 @@ function handleRoundEnd(result) {
   }
 
   const crashMultiplier = result.multiplier || 0;
+  if (result.status === 'crashed' && allowHaptics) {
+    playError();
+  }
   triggerCrashHighlight(crashMultiplier);
   const crashDelay = 700;
   scheduleReset(crashDelay, resetPostRoundUI);
