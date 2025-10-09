@@ -38,6 +38,10 @@ const multiplierContainer = document.getElementById('multiplier-container');
 const currentMultiplierEl = document.getElementById('current-multiplier');
 const root = document.documentElement;
 const pinchGestureHandlers = [];
+const fpsDisplay = document.getElementById('fps-display');
+let fpsFrameCount = 0;
+let fpsLastTime = performance.now();
+let fpsMonitorHandle = null;
 
 const BET_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
 const BUTTON_STATES = {
@@ -142,6 +146,30 @@ function init() {
   attachEventListeners();
   disablePinchZoom();
   window.addEventListener('beforeunload', enablePinchZoom, { once: true });
+  startFpsMonitor();
+}
+
+export function recordFps(timestamp) {
+  if (!fpsDisplay) return;
+  fpsFrameCount += 1;
+  if (timestamp >= fpsLastTime + 1000) {
+    const fps = Math.round((fpsFrameCount * 1000) / (timestamp - fpsLastTime));
+    fpsDisplay.textContent = `${fps}`;
+    fpsFrameCount = 0;
+    fpsLastTime = timestamp;
+  }
+}
+
+function startFpsMonitor() {
+  if (!fpsDisplay) return;
+  const loop = (timestamp) => {
+    recordFps(timestamp);
+    fpsMonitorHandle = requestAnimationFrame(loop);
+  };
+  if (fpsMonitorHandle !== null) {
+    cancelAnimationFrame(fpsMonitorHandle);
+  }
+  fpsMonitorHandle = requestAnimationFrame(loop);
 }
 
 function attachEventListeners() {

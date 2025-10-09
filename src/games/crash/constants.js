@@ -8,7 +8,7 @@ export const WORLD = {
   scrollSpeed: 200,
   birdX: 96,
   groundHeight: 96,
-};
+}; 
 
 export const BIRD = {
   width: 64,

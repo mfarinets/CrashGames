@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Crash Level Designer</title>
+    <style>
+      :root {
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #f1f5f9;
+        color: #0f172a;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 24px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      select,
+      button,
+      input {
+        font: inherit;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        padding: 8px 12px;
+        background: #ffffff;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+        border: none;
+        background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+        color: #052e16;
+        font-weight: 600;
+        box-shadow: 0 12px 24px rgba(34, 197, 94, 0.25);
+      }
+      button.secondary {
+        background: #e2e8f0;
+        color: #0f172a;
+        box-shadow: none;
+      }
+      .layout {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+      .canvas-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .canvas-wrapper {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: 0 24px 45px rgba(15, 23, 42, 0.15);
+        max-height: 640px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 12px;
+      }
+      canvas {
+        display: block;
+        width: 2400px;
+        height: 680px;
+        background: linear-gradient(180deg, #bee3f8 0%, #63a7ff 100%);
+        border-radius: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        background: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.15);
+      }
+      thead {
+        background: #f1f5f9;
+      }
+      th,
+      td {
+        padding: 6px 8px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        text-align: left;
+      }
+      tbody tr:nth-child(odd) {
+        background: rgba(241, 245, 249, 0.65);
+      }
+      tbody tr:hover {
+        background: rgba(191, 219, 254, 0.35);
+      }
+      td input {
+        width: 100%;
+        padding: 4px 6px;
+      }
+      .controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .export-area {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 160px;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: #ffffff;
+        color: inherit;
+        padding: 12px;
+        resize: vertical;
+      }
+      .chip {
+        border-radius: 999px;
+        padding: 3px 10px;
+        background: rgba(14, 165, 233, 0.18);
+        border: 1px solid rgba(14, 165, 233, 0.32);
+        font-size: 12px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 18px 0 6px;
+      }
+      .pipe-actions {
+        display: flex;
+        gap: 6px;
+      }
+      @media (max-width: 1024px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Crash Level Designer</h1>
+        <p style="margin: 4px 0 0; color: rgba(226, 232, 240, 0.65);">
+          Inspect and tweak crash mode levels. Adjust values and export updated
+          arrays back into <code>levels.js</code>.
+        </p>
+      </div>
+      <div class="controls">
+        <label>
+          Mode:
+          <select id="level-select"></select>
+        </label>
+        <button id="add-pipe" class="secondary" type="button">Add Pipe</button>
+        <button id="reset-level" class="secondary" type="button">
+          Reset Changes
+        </button>
+        <button id="export-level" type="button">Export Level Config</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="canvas-panel">
+        <div class="section-title">Arena Preview</div>
+        <div class="canvas-wrapper">
+          <canvas id="level-canvas" width="2400" height="680"></canvas>
+        </div>
+        <div class="chip" id="meta-info"></div>
+      </div>
+
+      <div>
+        <div class="section-title">Pipes &amp; Crash Points</div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Crash Point</th>
+              <th>Distance</th>
+              <th>Gap Height</th>
+              <th>Offset</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pipes-table"></tbody>
+        </table>
+
+        <div class="export-area">
+          <div class="section-title">Export</div>
+          <textarea
+            id="export-output"
+            readonly
+            placeholder="Click “Export Level Config” to copy arrays"
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { LEVELS } from './src/games/crash/levels.js';
+      import {
+        VIRTUAL_HEIGHT,
+        WORLD,
+        PIPE,
+      } from './src/games/crash/constants.js';
+
+      const levelSelect = document.getElementById('level-select');
+      const canvas = document.getElementById('level-canvas');
+      const metaInfo = document.getElementById('meta-info');
+      const pipesTable = document.getElementById('pipes-table');
+      const addPipeBtn = document.getElementById('add-pipe');
+      const resetBtn = document.getElementById('reset-level');
+      const exportBtn = document.getElementById('export-level');
+      const exportOutput = document.getElementById('export-output');
+
+      const ctx = canvas.getContext('2d');
+      const DEVICE_RATIO = window.devicePixelRatio || 1;
+      const CANVAS_WIDTH = 2400;
+      const CANVAS_HEIGHT = 680;
+
+      canvas.style.width = `${CANVAS_WIDTH}px`;
+      canvas.style.height = `${CANVAS_HEIGHT}px`;
+
+      let state = {
+        levelId: null,
+        crashPoints: [],
+        distances: [],
+        gapHeights: [],
+        offsets: [],
+        gapBaseline: 360,
+        groundTheme: 'grass',
+      };
+
+      const originalLevels = Object.keys(LEVELS).reduce((acc, key) => {
+        const lvl = LEVELS[key];
+        acc[key] = {
+          gapBaseline: lvl.gapBaseline ?? 360,
+          groundTheme: lvl.groundTheme ?? 'grass',
+          crashPoints: [...lvl.crashPoints],
+          distances: lvl.pipes.map((p) => p.distanceFromPrev),
+          gapHeights: lvl.pipes.map((p) => p.gapHeight),
+          offsets: lvl.pipes.map((p) => p.gapCenter - (lvl.gapBaseline ?? 360)),
+        };
+        return acc;
+      }, {});
+
+      function initSelect() {
+        Object.keys(LEVELS).forEach((key) => {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = LEVELS[key].name ?? key;
+          levelSelect.appendChild(option);
+        });
+        levelSelect.addEventListener('change', () =>
+          loadLevel(levelSelect.value)
+        );
+      }
+
+      function loadLevel(levelId) {
+        const original = originalLevels[levelId];
+        if (!original) return;
+        state = {
+          levelId,
+          crashPoints: [...original.crashPoints],
+          distances: [...original.distances],
+          gapHeights: [...original.gapHeights],
+          offsets: [...original.offsets],
+          gapBaseline: original.gapBaseline,
+          groundTheme: original.groundTheme,
+        };
+        render();
+      }
+
+      function render() {
+        renderTable();
+        renderCanvas();
+        renderMeta();
+        updateExportPreview();
+      }
+
+      function renderMeta() {
+        const length = state.crashPoints.length;
+        const totalDistance = state.distances.reduce((sum, value) => sum + value, 0);
+        metaInfo.textContent = `${state.levelId} · ${length} pipes · total distance ${totalDistance.toFixed(
+          0
+        )}px`;
+      }
+
+      function renderTable() {
+        pipesTable.innerHTML = '';
+        state.crashPoints.forEach((point, index) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td><input type="number" step="0.01" value="${point}"/></td>
+            <td><input type="number" step="1" value="${state.distances[index]}"/></td>
+            <td><input type="number" step="1" value="${state.gapHeights[index]}"/></td>
+            <td><input type="number" step="1" value="${state.offsets[index]}"/></td>
+            <td class="pipe-actions">
+              <button type="button" class="secondary" data-action="copy">Duplicate</button>
+              <button type="button" class="secondary" data-action="remove">Remove</button>
+            </td>
+          `;
+          const [pointInput, distInput, gapInput, offsetInput] =
+            tr.querySelectorAll('input');
+
+          pointInput.addEventListener('change', (event) => {
+            state.crashPoints[index] = parseFloat(event.target.value);
+            updateExportPreview();
+          });
+          distInput.addEventListener('change', (event) => {
+            state.distances[index] = Math.max(1, parseFloat(event.target.value));
+            updateExportPreview();
+            renderCanvas();
+          });
+          gapInput.addEventListener('change', (event) => {
+            state.gapHeights[index] = Math.max(10, parseFloat(event.target.value));
+            updateExportPreview();
+            renderCanvas();
+          });
+          offsetInput.addEventListener('change', (event) => {
+            state.offsets[index] = parseFloat(event.target.value);
+            updateExportPreview();
+            renderCanvas();
+          });
+
+          tr.querySelector('[data-action="remove"]').addEventListener('click', () =>
+            removePipe(index)
+          );
+          tr.querySelector('[data-action="copy"]').addEventListener('click', () =>
+            duplicatePipe(index)
+          );
+
+          pipesTable.appendChild(tr);
+        });
+      }
+
+      function duplicatePipe(index) {
+        state.crashPoints.splice(index + 1, 0, state.crashPoints[index]);
+        state.distances.splice(index + 1, 0, state.distances[index]);
+        state.gapHeights.splice(index + 1, 0, state.gapHeights[index]);
+        state.offsets.splice(index + 1, 0, state.offsets[index]);
+        render();
+      }
+
+      function removePipe(index) {
+        if (state.crashPoints.length <= 1) return;
+        state.crashPoints.splice(index, 1);
+        state.distances.splice(index, 1);
+        state.gapHeights.splice(index, 1);
+        state.offsets.splice(index, 1);
+        render();
+      }
+
+      function renderCanvas() {
+        canvas.width = CANVAS_WIDTH * DEVICE_RATIO;
+        canvas.height = CANVAS_HEIGHT * DEVICE_RATIO;
+        ctx.save();
+        ctx.scale(DEVICE_RATIO, DEVICE_RATIO);
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        const BASE_SPAWN = 420;
+        const totalDistance = BASE_SPAWN + state.distances.reduce((sum, value) => sum + value, 0);
+        const margin = 160;
+        const scaleX = (CANVAS_WIDTH - margin * 2) / totalDistance;
+        const scaleY = CANVAS_HEIGHT / VIRTUAL_HEIGHT;
+        const groundTopWorld = VIRTUAL_HEIGHT - WORLD.groundHeight;
+        const groundTopCanvas = groundTopWorld * scaleY;
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+        gradient.addColorStop(0, '#ecf4ff');
+        gradient.addColorStop(1, '#c7dbff');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        // ground
+        ctx.fillStyle = '#b1e5a6';
+        ctx.fillRect(margin / 2, groundTopCanvas, CANVAS_WIDTH - margin, CANVAS_HEIGHT - groundTopCanvas);
+        ctx.fillStyle = '#7fd086';
+        ctx.fillRect(margin / 2, groundTopCanvas, CANVAS_WIDTH - margin, 12);
+
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(margin * 0.75, groundTopCanvas);
+        ctx.lineTo(CANVAS_WIDTH - margin * 0.75, groundTopCanvas);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        let cursor = BASE_SPAWN;
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        state.crashPoints.forEach((multiplier, index) => {
+          cursor += state.distances[index];
+          const worldX = cursor;
+          const x = margin + worldX * scaleX;
+          const gapHeight = state.gapHeights[index];
+          const offset = state.offsets[index];
+          const gapCenter = state.gapBaseline + offset;
+          const gapTopWorld = gapCenter - gapHeight / 2;
+          const gapBottomWorld = gapCenter + gapHeight / 2;
+          const pipeWidth = PIPE.width * scaleX;
+
+          const topHeight = Math.max(0, gapTopWorld);
+          const bottomHeight = Math.max(0, (VIRTUAL_HEIGHT - WORLD.groundHeight) - gapBottomWorld);
+
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(
+            x - pipeWidth / 2,
+            0,
+            pipeWidth,
+            topHeight * scaleY
+          );
+          ctx.fillRect(
+            x - pipeWidth / 2,
+            gapBottomWorld * scaleY,
+            pipeWidth,
+            bottomHeight * scaleY
+          );
+
+          ctx.fillStyle = '#0f172a';
+          ctx.fillText(`×${multiplier.toFixed(2)}`, x, gapTopWorld * scaleY - 12);
+        });
+
+        ctx.restore();
+      }
+
+      function updateExportPreview() {
+        const indent = '      ';
+        const crashPoints = state.crashPoints.map((value) => Number(value.toFixed(8)));
+        const distances = state.distances.map((value) => Number(value.toFixed(2)));
+        const gapHeights = state.gapHeights.map((value) => Number(value.toFixed(2)));
+        const offsets = state.offsets.map((value) => Number(value.toFixed(2)));
+
+        const exportText = `crashPoints: [
+${indent}${crashPoints.join(`, `)},
+    ],
+    pipes: buildPipeConfig(
+      [
+${indent}${crashPoints.join(`, `)},
+      ],
+      {
+        distances: [
+${indent}${distances.join(`, `)},
+        ],
+        gapHeights: [
+${indent}${gapHeights.join(`, `)},
+        ],
+        offsets: [
+${indent}${offsets.join(`, `)},
+        ],
+      }
+    ),`;
+
+        exportOutput.value = exportText;
+      }
+
+      addPipeBtn.addEventListener('click', () => {
+        state.crashPoints.push(1);
+        state.distances.push(300);
+        state.gapHeights.push(160);
+        state.offsets.push(0);
+        render();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        if (!state.levelId) return;
+        loadLevel(state.levelId);
+      });
+
+      exportBtn.addEventListener('click', async () => {
+        updateExportPreview();
+        try {
+          await navigator.clipboard.writeText(exportOutput.value);
+          exportBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            exportBtn.textContent = 'Export Level Config';
+          }, 1200);
+        } catch (error) {
+          console.error('Clipboard failed', error);
+        }
+      });
+
+      initSelect();
+      const defaultLevel = Object.keys(LEVELS)[0];
+      levelSelect.value = defaultLevel;
+      loadLevel(defaultLevel);
+    </script>
+  </body>
+</html>
