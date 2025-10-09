@@ -247,24 +247,26 @@ export class KnivesGame {
 
   updateProjectiles(dt) {
     const impactKnives = [];
-    this.projectiles.forEach((knife) => {
+    this.projectiles = this.projectiles.filter((knife) => {
       knife.progress += dt / knife.duration;
-      knife.progress = Math.min(knife.progress, 1);
-      const t = easeInOut(knife.progress);
       const impactAngle = normalizeAngle(this.wheel.angle);
       const { x: targetX, y: targetY } = this.getImpactPoint(impactAngle);
       knife.targetAngle = impactAngle;
       knife.targetX = targetX;
       knife.targetY = targetY;
+
+      if (knife.progress >= 1) {
+        impactKnives.push(knife);
+        return false;
+      }
+
+      const t = easeInOut(knife.progress);
       knife.x = lerp(knife.startX, targetX, t);
       knife.y = lerp(knife.startY, targetY, t);
-      if (knife.progress >= 1 && !knife.resolved) {
-        impactKnives.push(knife);
-      }
+      return true;
     });
 
     impactKnives.forEach((knife) => this.resolveImpact(knife));
-    this.projectiles = this.projectiles.filter((knife) => !knife.resolved);
   }
 
   resolveImpact(knife) {

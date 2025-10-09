@@ -82,18 +82,16 @@
           </div>
         </div>
 
-        <div class="primary-action-area">
-          <div class="bet-spinner" id="bet-spinner">
-            <button class="spinner-btn" id="bet-minus">−</button>
-            <div class="bet-display">
-              <span class="label">Bet</span>
-              <strong id="bet-amount">$10.00</strong>
-            </div>
-            <button class="spinner-btn" id="bet-plus">+</button>
-          </div>
-          <button id="primary-button" class="cta ready">
+        <div id="bet-spinner" class="primary-action-area">
+          <button class="spinner-btn" id="bet-minus" type="button" aria-label="Decrease bet">
+            −
+          </button>
+          <button id="primary-button" class="cta ready" type="button">
             <span class="cta-label">Bet</span>
             <small id="cta-subtext">$10.00</small>
+          </button>
+          <button class="spinner-btn" id="bet-plus" type="button" aria-label="Increase bet">
+            +
           </button>
         </div>
 

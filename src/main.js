@@ -30,7 +30,6 @@ const ctaSubtext = document.getElementById('cta-subtext');
 const betSpinner = document.getElementById('bet-spinner');
 const betMinus = document.getElementById('bet-minus');
 const betPlus = document.getElementById('bet-plus');
-const betAmountEl = document.getElementById('bet-amount');
 const metaLeftLabel = document.getElementById('meta-left-label');
 const metaLeftValue = document.getElementById('meta-left-value');
 const winOverlay = document.getElementById('win-overlay');
@@ -602,7 +601,6 @@ function triggerCrashHighlight(multiplier) {
 
 function updateBetDisplay() {
   const betValue = BET_STEPS[betIndex];
-  betAmountEl.textContent = formatCurrency(betValue);
   if (buttonState === BUTTON_STATES.WIN) {
     metaLeftLabel.textContent = 'Last win:';
     metaLeftValue.textContent = formatCurrency(lastWinAmount);
@@ -733,9 +731,17 @@ function applyButtonThemeForState(state) {
 }
 
 function disableBetSpinner(disabled) {
-  betSpinner.classList.toggle('disabled', disabled);
+  betSpinner?.classList?.toggle('disabled', disabled);
   betMinus.disabled = disabled;
   betPlus.disabled = disabled;
+  modeButtons.forEach((btn) => {
+    btn.disabled = disabled;
+    btn.classList.toggle('disabled', disabled);
+  });
+  if (moreButton) {
+    moreButton.disabled = disabled;
+    moreButton.classList.toggle('disabled', disabled);
+  }
 }
 
 function resetPostRoundUI() {
